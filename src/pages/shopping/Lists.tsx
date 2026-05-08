@@ -1,16 +1,33 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, Plus, Pencil, Trash2, ChevronUp, ChevronDown, Search, ListChecks, Play } from 'lucide-react';
+import { ChevronLeft, Plus, Pencil, Trash2, ChevronUp, ChevronDown, Search, ListChecks, Play, Hourglass } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
-import { deleteShoppingList, reorderShoppingList, useShoppingLists } from '@/db/repo';
-import type { ShoppingList } from '@/types';
+import {
+  deleteShoppingList,
+  reorderShoppingList,
+  useInProgressShoppingSessions,
+  useShoppingLists,
+} from '@/db/repo';
+import type { ShoppingList, ShoppingSession } from '@/types';
 
 export function ShoppingLists() {
   const lists = useShoppingLists();
+  const inProgress = useInProgressShoppingSessions();
   const toast = useToast();
   const [query, setQuery] = useState('');
+
+  // Most recent in-progress session per listId. If a list somehow has more
+  // than one (shouldn't happen, but safe), we surface the newest.
+  const inProgressByList = useMemo(() => {
+    const m = new Map<string, ShoppingSession>();
+    for (const s of inProgress ?? []) {
+      const cur = m.get(s.listId);
+      if (!cur || s.startedAt > cur.startedAt) m.set(s.listId, s);
+    }
+    return m;
+  }, [inProgress]);
 
   const sorted = useMemo(() => lists?.slice().sort((a, b) => a.order - b.order) ?? [], [lists]);
   const filtered = useMemo(() => {
@@ -97,13 +114,31 @@ export function ShoppingLists() {
                       : `${itemEntries} item${itemEntries === 1 ? '' : 's'}, ${groupEntries} group${groupEntries === 1 ? '' : 's'}`}
                   </div>
                 </Link>
-                <Link
-                  to={`${list.id}/run`}
-                  className="btn-secondary h-9 px-3 text-xs"
-                  aria-label={`Shop ${list.name}`}
-                >
-                  <Play size={14} /> Shop
-                </Link>
+                {(() => {
+                  const ip = inProgressByList.get(list.id);
+                  if (ip) {
+                    const checked = ip.resolvedItems.filter((r) => r.checked).length;
+                    return (
+                      <Link
+                        to={`${list.id}/run`}
+                        className="btn-primary h-9 px-3 text-xs"
+                        aria-label={`Continue shopping ${list.name}`}
+                        title={`Started ${new Date(ip.startedAt).toLocaleString()}`}
+                      >
+                        <Hourglass size={14} /> Continue ({checked}/{ip.resolvedItems.length})
+                      </Link>
+                    );
+                  }
+                  return (
+                    <Link
+                      to={`${list.id}/run`}
+                      className="btn-secondary h-9 px-3 text-xs"
+                      aria-label={`Shop ${list.name}`}
+                    >
+                      <Play size={14} /> Shop
+                    </Link>
+                  );
+                })()}
                 <div className="flex items-center gap-1">
                   {!queryActive && (
                     <>

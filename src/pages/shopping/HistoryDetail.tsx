@@ -50,6 +50,27 @@ export function ShoppingHistoryDetail() {
     );
   }
 
+  if (session.completedAt === undefined) {
+    // Stumbled into an in-progress row's detail page (e.g. via a bookmarked
+    // URL). Send the user where it actually lives — the run page.
+    return (
+      <div>
+        <Link to="/shopping/lists" className="text-sm text-ink-500">
+          <ChevronLeft size={14} /> Lists
+        </Link>
+        <EmptyState
+          title="Still in progress"
+          description="This shop hasn't been wrapped up yet. Continue from the Lists page."
+          action={
+            <Link to={`/shopping/lists/${session.listId}/run`} className="btn-primary">
+              Continue shopping
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
+
   const listExists = !!list;
 
   const onDelete = async () => {

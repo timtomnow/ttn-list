@@ -10,6 +10,7 @@ import {
   Unlock,
   X,
   Check,
+  RotateCcw,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -20,6 +21,9 @@ import {
   addPhoto,
   createShoppingSession,
   deletePhoto,
+  deleteShoppingSession,
+  findInProgressShoppingSession,
+  updateShoppingSession,
   useShoppingGroups,
   useShoppingItems,
   useShoppingList,
@@ -27,6 +31,8 @@ import {
 import type { ShoppingItem, ShoppingResolvedItem } from '@/types';
 import { formatQty, resolveShoppingList, seedResolvedItems } from '@/lib/shopping';
 import { useWakeLock } from '@/hooks/useWakeLock';
+
+type BootInfo = { sessionId: string; snapshotName: string; startedAt: number };
 
 export function ShoppingRun() {
   const { id } = useParams();
@@ -36,8 +42,13 @@ export function ShoppingRun() {
   const navigate = useNavigate();
   const toast = useToast();
 
+  // Resolved-items state holds the runtime checked/order array. It's
+  // hydrated either from an existing in-progress session row (resume) or
+  // from a fresh resolve of the current list (new run). Either way, after
+  // hydration we write changes back to the session row on every mutation
+  // so backing out and returning preserves progress.
+  const [boot, setBoot] = useState<BootInfo | null>(null);
   const [resolved, setResolved] = useState<ShoppingResolvedItem[] | null>(null);
-  const [startedAt] = useState(() => Date.now());
   const [mode, setMode] = useState<'shopping' | 'completing'>('shopping');
 
   const itemsById = useMemo(() => {
@@ -46,21 +57,52 @@ export function ShoppingRun() {
     return m;
   }, [items]);
 
-  // Seed the resolved-items state once we have list + libraries. We snapshot
-  // here so subsequent edits to the list/items library don't mutate this run.
+  // Boot: try to resume; otherwise wait for libraries and create fresh.
   useEffect(() => {
-    if (resolved !== null) return;
-    if (!list || !items || !groups) return;
-    const rows = resolveShoppingList(list, items, groups);
-    setResolved(seedResolvedItems(rows));
-  }, [list, items, groups, resolved]);
+    if (boot) return;
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      const existing = await findInProgressShoppingSession(id);
+      if (cancelled) return;
+      if (existing) {
+        setResolved(existing.resolvedItems);
+        setBoot({
+          sessionId: existing.id,
+          snapshotName: existing.listName,
+          startedAt: existing.startedAt,
+        });
+        return;
+      }
+      // No in-progress; need list + libraries to start fresh. Effect re-runs
+      // when those become available.
+      if (!list || !items || !groups) return;
+      const rows = resolveShoppingList(list, items, groups);
+      const seeded = seedResolvedItems(rows);
+      const startedAt = Date.now();
+      const session = await createShoppingSession({
+        listId: id,
+        listName: list.name,
+        startedAt,
+        resolvedItems: seeded,
+        photoIds: [],
+      });
+      if (cancelled) return;
+      setResolved(seeded);
+      setBoot({ sessionId: session.id, snapshotName: list.name, startedAt });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, list, items, groups, boot]);
 
-  // Acquire wake lock for the duration of the run + completion flow.
   const wakeLock = useWakeLock(true);
 
-  // The list might be deleted out from under us mid-run; if it disappears
-  // before we snapshot, fall back. Once snapshotted, the run is self-sufficient.
-  if (!list && resolved === null) {
+  // If list is undefined and we have no in-progress to resume from, we're
+  // either still loading or the list was deleted. We can't tell apart from
+  // useLiveQuery's return value, so stay in "Preparing…" — the user can
+  // back out via the breadcrumb.
+  if (!boot || !resolved) {
     return (
       <div>
         <Link
@@ -69,37 +111,50 @@ export function ShoppingRun() {
         >
           <ChevronLeft size={16} /> Lists
         </Link>
-        <EmptyState
-          title="That list is gone"
-          description="It may have been deleted. Pick another list to shop."
-          action={
-            <Link to="/shopping/lists" className="btn-primary">
-              Back to lists
-            </Link>
-          }
-        />
+        <p className="text-sm text-ink-500">Preparing…</p>
       </div>
     );
   }
 
-  if (resolved === null) {
-    return <p className="text-sm text-ink-500">Preparing…</p>;
-  }
+  /** Apply a state change AND mirror it to the in-progress session row. */
+  const persist = (next: ShoppingResolvedItem[]) => {
+    setResolved(next);
+    void updateShoppingSession(boot.sessionId, { resolvedItems: next });
+  };
 
   const move = (idx: number, dir: -1 | 1) => {
-    setResolved((prev) => {
-      if (!prev) return prev;
-      const next = idx + dir;
-      if (next < 0 || next >= prev.length) return prev;
-      const out = prev.slice();
-      const [m] = out.splice(idx, 1);
-      out.splice(next, 0, m);
-      return out;
-    });
+    const next = idx + dir;
+    if (next < 0 || next >= resolved.length) return;
+    const out = resolved.slice();
+    const [m] = out.splice(idx, 1);
+    out.splice(next, 0, m);
+    persist(out);
   };
 
   const toggle = (idx: number) =>
-    setResolved((prev) => prev?.map((r, i) => (i === idx ? { ...r, checked: !r.checked } : r)) ?? prev);
+    persist(resolved.map((r, i) => (i === idx ? { ...r, checked: !r.checked } : r)));
+
+  const onRestart = async () => {
+    if (!list || !items || !groups || !id) {
+      toast.show('Cannot restart — list libraries not loaded yet', 'error');
+      return;
+    }
+    if (!confirm('Discard this shop and start over from the current list?')) return;
+    await deleteShoppingSession(boot.sessionId);
+    const rows = resolveShoppingList(list, items, groups);
+    const seeded = seedResolvedItems(rows);
+    const startedAt = Date.now();
+    const session = await createShoppingSession({
+      listId: id,
+      listName: list.name,
+      startedAt,
+      resolvedItems: seeded,
+      photoIds: [],
+    });
+    setResolved(seeded);
+    setBoot({ sessionId: session.id, snapshotName: list.name, startedAt });
+    toast.show('Restarted');
+  };
 
   const checkedCount = resolved.filter((r) => r.checked).length;
   const total = resolved.length;
@@ -108,15 +163,14 @@ export function ShoppingRun() {
   if (mode === 'completing') {
     return (
       <CompletionView
-        listId={id ?? list?.id ?? ''}
-        listName={list?.name ?? '(deleted list)'}
-        startedAt={startedAt}
+        sessionId={boot.sessionId}
+        listName={boot.snapshotName}
         resolved={resolved}
         itemsById={itemsById}
         onCancel={() => setMode('shopping')}
-        onSaved={(sessionId) => {
+        onSaved={(savedId) => {
           toast.show('Session saved');
-          navigate(`/shopping/history/${sessionId}`);
+          navigate(`/shopping/history/${savedId}`);
         }}
       />
     );
@@ -131,7 +185,7 @@ export function ShoppingRun() {
         <ChevronLeft size={16} /> Lists
       </Link>
       <PageHeader
-        title={list?.name ?? 'Shopping'}
+        title={boot.snapshotName}
         subtitle={
           <span className="inline-flex items-center gap-2">
             <span>{checkedCount} of {total} checked</span>
@@ -139,14 +193,25 @@ export function ShoppingRun() {
           </span>
         }
         action={
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => setMode('completing')}
-            disabled={total === 0 && checkedCount === 0}
-          >
-            <Check size={16} /> Done
-          </button>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              className="btn-ghost h-9 px-2"
+              onClick={onRestart}
+              aria-label="Restart shop"
+              title="Restart shop"
+            >
+              <RotateCcw size={16} />
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => setMode('completing')}
+              disabled={total === 0 && checkedCount === 0}
+            >
+              <Check size={16} /> Done
+            </button>
+          </div>
         }
       />
 
@@ -256,17 +321,15 @@ function WakeLockBadge({ state }: { state: ReturnType<typeof useWakeLock> }) {
 }
 
 function CompletionView({
-  listId,
+  sessionId,
   listName,
-  startedAt,
   resolved,
   itemsById,
   onCancel,
   onSaved,
 }: {
-  listId: string;
+  sessionId: string;
   listName: string;
-  startedAt: number;
   resolved: ShoppingResolvedItem[];
   itemsById: Map<string, ShoppingItem>;
   onCancel: () => void;
@@ -298,16 +361,14 @@ function CompletionView({
   const onSave = async () => {
     setBusy(true);
     try {
-      const session = await createShoppingSession({
-        listId,
-        listName,
-        startedAt,
+      // Stamp the in-progress row as completed and attach photos/notes.
+      await updateShoppingSession(sessionId, {
         completedAt: Date.now(),
         resolvedItems: resolved,
         photoIds,
         notes: notes.trim() || undefined,
       });
-      onSaved(session.id);
+      onSaved(sessionId);
     } finally {
       setBusy(false);
     }

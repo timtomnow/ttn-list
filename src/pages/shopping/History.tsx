@@ -5,7 +5,10 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { useShoppingSessions } from '@/db/repo';
 
 export function ShoppingHistory() {
-  const sessions = useShoppingSessions();
+  const all = useShoppingSessions();
+  // History only shows completed sessions; in-progress ones are surfaced via
+  // the "Continue" affordance on the Lists page.
+  const sessions = all?.filter((s) => s.completedAt !== undefined);
 
   return (
     <div>

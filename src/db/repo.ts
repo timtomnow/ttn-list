@@ -178,6 +178,28 @@ export function useShoppingSession(id: string | null | undefined): ShoppingSessi
   return useLiveQuery(async () => (id ? await db.shoppingSessions.get(id) : undefined), [id]);
 }
 
+/**
+ * All in-progress shopping sessions (any list). Used by the Lists page to
+ * surface a "Continue" affordance per list. We filter in memory rather than
+ * indexing `completedAt` because IndexedDB can't index "is undefined".
+ */
+export function useInProgressShoppingSessions(): ShoppingSession[] | undefined {
+  return useLiveQuery(async () => {
+    const all = await db.shoppingSessions.toArray();
+    return all.filter((s) => s.completedAt === undefined);
+  }, []);
+}
+
+/** One-shot lookup for the most recent in-progress session for a given list. */
+export async function findInProgressShoppingSession(
+  listId: string,
+): Promise<ShoppingSession | undefined> {
+  const all = await db.shoppingSessions.where('listId').equals(listId).toArray();
+  const inProgress = all.filter((s) => s.completedAt === undefined);
+  inProgress.sort((a, b) => b.startedAt - a.startedAt);
+  return inProgress[0];
+}
+
 // =============================================================================
 // Chores — Items
 // =============================================================================
