@@ -15,6 +15,7 @@ import {
 } from '@/db/repo';
 import type { ShoppingItem, ShoppingGroup, ShoppingListEntry } from '@/types';
 import { formatQty, moveEntry, resolveShoppingList } from '@/lib/shopping';
+import { useDeadLinkBail } from '@/hooks/useDeadLinkBail';
 
 export function ShoppingListEditor() {
   const { id } = useParams();
@@ -41,6 +42,16 @@ export function ShoppingListEditor() {
       setHydrated(true);
     }
   }, [existing, hydrated, isNew]);
+
+  // Dead-link handling: a reminder may deep-link to a deleted list. After a
+  // brief grace period (so the live query has time to resolve), bail to the
+  // shopping home with a friendly toast.
+  const dead = useDeadLinkBail(existing, !isNew && !hydrated);
+  useEffect(() => {
+    if (!dead) return;
+    toast.show('That list no longer exists', 'error');
+    navigate('/shopping/lists', { replace: true });
+  }, [dead, navigate, toast]);
 
   const itemsById = useMemo(() => {
     const m = new Map<string, ShoppingItem>();

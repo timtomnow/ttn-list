@@ -200,6 +200,38 @@ export async function findInProgressShoppingSession(
   return inProgress[0];
 }
 
+export function useInProgressChoreSessions(): ChoreSession[] | undefined {
+  return useLiveQuery(async () => {
+    const all = await db.choreSessions.toArray();
+    return all.filter((s) => s.completedAt === undefined);
+  }, []);
+}
+
+export async function findInProgressChoreSession(
+  listId: string,
+): Promise<ChoreSession | undefined> {
+  const all = await db.choreSessions.where('listId').equals(listId).toArray();
+  const inProgress = all.filter((s) => s.completedAt === undefined);
+  inProgress.sort((a, b) => b.startedAt - a.startedAt);
+  return inProgress[0];
+}
+
+export function useInProgressProjectSessions(): ProjectSession[] | undefined {
+  return useLiveQuery(async () => {
+    const all = await db.projectSessions.toArray();
+    return all.filter((s) => s.completedAt === undefined);
+  }, []);
+}
+
+export async function findInProgressProjectSession(
+  listId: string,
+): Promise<ProjectSession | undefined> {
+  const all = await db.projectSessions.where('listId').equals(listId).toArray();
+  const inProgress = all.filter((s) => s.completedAt === undefined);
+  inProgress.sort((a, b) => b.startedAt - a.startedAt);
+  return inProgress[0];
+}
+
 // =============================================================================
 // Chores — Items
 // =============================================================================

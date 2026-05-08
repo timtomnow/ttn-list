@@ -268,7 +268,7 @@ real world, with wake lock and end-of-run photos.
 > tab, tap into it, attempt re-shop after editing the list and verify the
 > new session reflects the edits."*
 
-### Phase 7 — Chores: items + routines + lists + Chore it + history ⏳
+### Phase 7 — Chores: items + routines + lists + Chore it + history ✅
 **Goal:** Mirror Shopping for the Chores flavor.
 **Deliverables:**
 - All five Shopping pages reproduced for Chores. Where the data model
@@ -287,7 +287,7 @@ real world, with wake lock and end-of-run photos.
 > Don't touch Project pages. Acceptance: full CRUD + run + history loop
 > on Chores at parity with Shopping minus qty."*
 
-### Phase 8 — Projects: steps + processes + lists + Run it + history ⏳
+### Phase 8 — Projects: steps + processes + lists + Run it + history ✅
 **Goal:** Mirror Chores for the Projects flavor.
 **Deliverables:**
 - Same shape as Chores. List entries are either a ProjectStep ref or a
@@ -305,7 +305,7 @@ real world, with wake lock and end-of-run photos.
 > Shopping or Chore pages. Acceptance: full CRUD + run + history loop on
 > Projects."*
 
-### Phase 9 — Reminders + ICS deep links ⏳
+### Phase 9 — Reminders + ICS deep links ✅
 **Goal:** Generate `.ics` calendar files whose URL deep-links to a
 specific saved list. Handle dead links gracefully.
 **Deliverables:**
@@ -331,7 +331,7 @@ specific saved list. Handle dead links gracefully.
 > right title, time, recurrence, and a tappable URL that lands on the
 > right list (or shows the toast if you delete the list first)."*
 
-### Phase 10 — Import / Export ⏳
+### Phase 10 — Import / Export ✅
 **Goal:** A working backup/restore flow in Settings.
 **Deliverables:**
 - "Export" button — calls `exportData()` and `downloadJson()` from
@@ -375,20 +375,18 @@ specific saved list. Handle dead links gracefully.
 
 ## Progress Marker
 
-**Done so far:** Phases 0-6. Full Shopping vertical works end-to-end —
-items, groups, lists with qty + exclusions, Shop it run mode with Screen
-Wake Lock, and history with re-shop. `npm run check` clean.
+**Done so far:** Phases 0-10. All three flavors complete (Shopping with
+qty, Chores binary, Projects binary), each with full library + container-
+tier + lists + Run mode + history + persisted resume. Reminders generate
+`.ics` files that deep-link across all three flavors with dead-link
+redirect on the editor pages. Import/Export round-trips everything
+including base64-encoded photos. `npm run check` clean.
 
-**Next up:** Phases 7 (Chores, mirror Shopping minus qty), 8 (Projects,
-mirror Chores with the Step/Process/List naming), 9 (Reminders + ICS deep
-links), 10 (Import/Export UI in Settings — transport already exists), 11
-(polish: branded icons, empty-state copy pass, Lighthouse).
-
-The Shopping pages in [src/pages/shopping/](src/pages/shopping/) are the
-template Chores and Projects will mirror. The list-resolution helper at
-[src/lib/shopping.ts](src/lib/shopping.ts) and the wake-lock hook at
-[src/hooks/useWakeLock.ts](src/hooks/useWakeLock.ts) are reusable as-is
-(or with minor type swaps) for the other flavors.
+**Next up:** Phase 11 (polish — branded icons, copy pass, Lighthouse,
+accessibility sweep). Optional follow-ups beyond the original plan:
+dead-link bail on the Run pages too (currently only the editors handle
+it); a "Discard in-progress run" affordance from each flavor's Lists page
+(currently only inside the run via Restart).
 
 ---
 
