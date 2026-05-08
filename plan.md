@@ -354,7 +354,7 @@ specific saved list. Handle dead links gracefully.
 > round-trip a non-trivial dataset (with photos) through export → wipe →
 > import-replace, and confirm everything renders identically."*
 
-### Phase 11 — Polish ⏳
+### Phase 11 — Polish ✅
 **Goal:** Branded look, clean copy, accessible, ships.
 **Deliverables:**
 - Branded icons (192/512 PNG + apple-touch-icon, and a refined SVG mark).
@@ -375,18 +375,20 @@ specific saved list. Handle dead links gracefully.
 
 ## Progress Marker
 
-**Done so far:** Phases 0-10. All three flavors complete (Shopping with
+**Done so far:** Phases 0-11. All three flavors complete (Shopping with
 qty, Chores binary, Projects binary), each with full library + container-
 tier + lists + Run mode + history + persisted resume. Reminders generate
 `.ics` files that deep-link across all three flavors with dead-link
 redirect on the editor pages. Import/Export round-trips everything
-including base64-encoded photos. `npm run check` clean.
+including base64-encoded photos. Branded SVG icons + PNG variants (180
+apple-touch-icon, 192/512 any-purpose, 512 maskable). 45 resolver tests
+covering qty math, exclusions, dedup, deletion handling. In-app Help page
+under Settings. `npm run check` clean.
 
-**Next up:** Phase 11 (polish — branded icons, copy pass, Lighthouse,
-accessibility sweep). Optional follow-ups beyond the original plan:
-dead-link bail on the Run pages too (currently only the editors handle
-it); a "Discard in-progress run" affordance from each flavor's Lists page
-(currently only inside the run via Restart).
+**Open follow-ups** tracked as GitHub issues:
+- [#1](https://github.com/timtomnow/ttn-list/issues/1) — Run pages hang at "Preparing…" on dead deep-links.
+- [#2](https://github.com/timtomnow/ttn-list/issues/2) — Photo cleanup on cascade delete.
+- [#3](https://github.com/timtomnow/ttn-list/issues/3) — Extract shared shell across flavor pages.
 
 ---
 

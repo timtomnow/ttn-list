@@ -1,11 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Maskable: full-bleed background, glyph confined to the safe-zone (inner 80%, ~52..460). -->
   <rect width="512" height="512" fill="#0a0a0a"/>
-  <g fill="none" stroke="#fafafa" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M192 208 L368 208"/>
-    <path d="M192 264 L368 264"/>
-    <path d="M192 320 L336 320"/>
-    <circle cx="168" cy="208" r="16" fill="#fafafa"/>
-    <circle cx="168" cy="264" r="16" fill="#fafafa"/>
-    <circle cx="168" cy="320" r="16" fill="#fafafa"/>
+  <g fill="none" stroke="#fafafa" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="170" cy="200" r="28" fill="#fafafa" stroke="none"/>
+    <path d="M154 200 L166 213 L188 188" stroke="#0a0a0a" stroke-width="18"/>
+    <path d="M218 200 L368 200"/>
+    <circle cx="170" cy="270" r="28" fill="#fafafa" stroke="none"/>
+    <path d="M154 270 L166 283 L188 258" stroke="#0a0a0a" stroke-width="18"/>
+    <path d="M218 270 L368 270"/>
+    <circle cx="170" cy="340" r="28" stroke="#fafafa"/>
+    <path d="M218 340 L328 340"/>
   </g>
 </svg>

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Sun, Moon, Monitor, Github, Database, Download, Upload } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Sun, Moon, Monitor, Github, Database, Download, Upload, HelpCircle, ChevronRight } from 'lucide-react';
 import { useTheme, type ThemePref } from '@/app/theme';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
@@ -20,7 +21,38 @@ const REPO_URL = 'https://github.com/timtomnow/ttn-list';
 export function Settings() {
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Theme, data, and about." />
+      <PageHeader
+        title="Settings"
+        subtitle="Theme, data, help, and about."
+        action={
+          <Link
+            to="/settings/help"
+            className="rounded-lg p-2 text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800"
+            aria-label="Help"
+            title="Help"
+          >
+            <HelpCircle size={20} />
+          </Link>
+        }
+      />
+
+      <section className="mt-2">
+        <Link
+          to="/settings/help"
+          className="flex items-center gap-4 rounded-2xl border border-ink-200 bg-white p-4 transition hover:border-ink-300 dark:border-ink-800 dark:bg-ink-900 dark:hover:border-ink-700"
+        >
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-ink-100 text-ink-700 dark:bg-ink-800 dark:text-ink-300">
+            <HelpCircle size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium">Help</div>
+            <p className="truncate text-xs text-ink-500 dark:text-ink-400">
+              How TTN List works — tiers, run modes, photos, reminders, backup.
+            </p>
+          </div>
+          <ChevronRight size={18} className="text-ink-400 dark:text-ink-500" />
+        </Link>
+      </section>
 
       <AppearanceSection />
       <DataSection />

@@ -14,7 +14,15 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icon.svg', 'icon-maskable.svg'],
+      includeAssets: [
+        'favicon.svg',
+        'icon.svg',
+        'icon-maskable.svg',
+        'apple-touch-icon.png',
+        'icon-192.png',
+        'icon-512.png',
+        'icon-maskable-512.png',
+      ],
       manifest: {
         name: 'TTN List',
         short_name: 'TTN List',
@@ -34,9 +42,27 @@ export default defineConfig({
             purpose: 'any',
           },
           {
+            src: `${BASE}icon-192.png`,
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: `${BASE}icon-512.png`,
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
             src: `${BASE}icon-maskable.svg`,
             sizes: 'any',
             type: 'image/svg+xml',
+            purpose: 'maskable',
+          },
+          {
+            src: `${BASE}icon-maskable-512.png`,
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'maskable',
           },
         ],
