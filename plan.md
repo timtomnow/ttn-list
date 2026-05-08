@@ -127,7 +127,11 @@ scratch; empty page stubs in place; PWA manifest configured at
 `/ttn-list/`. Stack confirmed (no Recharts; Wake Lock added; everything
 else as plot-my-notes).
 
-### Phase 1 — Theme + nav shell live ⏳
+### Phase 1 — Theme + nav shell live ✅
+*Verified by the bootstrap session: `npm run check` clean and the user
+confirmed `npm install` + `npm run check` ran. PWA installability untested
+on a real device — flag for a polish pass.*
+
 **Goal:** Verify the scaffold actually runs end-to-end before building features.
 **Deliverables:**
 - `npm run dev` boots, every nav tab navigates, the theme switcher in
@@ -146,7 +150,7 @@ else as plot-my-notes).
 > [src/db/](src/db/), [plan.md](plan.md). Acceptance: `npm run check`
 > passes and the app installs as a PWA in iOS Safari / Chrome Android."*
 
-### Phase 2 — Photos infrastructure ⏳
+### Phase 2 — Photos infrastructure ✅
 **Goal:** A reusable `<PhotoPicker>` component and the
 `URL.createObjectURL` plumbing every other phase will lean on.
 **Deliverables:**
@@ -171,7 +175,7 @@ else as plot-my-notes).
 > Acceptance: a tiny demo route or a Storybook-style scratch page where you
 > can add/remove a photo and see the thumbnail update reactively."*
 
-### Phase 3 — Shopping items + groups CRUD ⏳
+### Phase 3 — Shopping items + groups CRUD ✅
 **Goal:** Library views for shopping items and groups, with photo,
 notes, drag-reorder, and group-membership editing.
 **Deliverables:**
@@ -193,7 +197,7 @@ notes, drag-reorder, and group-membership editing.
 > create-edit-delete-reorder flow on items and groups, with photos, on a
 > phone-sized viewport."*
 
-### Phase 4 — Shopping saved lists + qty math + exclusions ⏳
+### Phase 4 — Shopping saved lists + qty math + exclusions ✅
 **Goal:** Compose a saved shopping list from items and groups, with
 quantities and per-run exclusions ("I already have lettuce").
 **Deliverables:**
@@ -216,7 +220,7 @@ quantities and per-run exclusions ("I already have lettuce").
 > groups, exclude one member from one group, see the preview reflect the
 > exclusion and summed qtys."*
 
-### Phase 5 — Shop it run mode ⏳
+### Phase 5 — Shop it run mode ✅
 **Goal:** A focused checklist UI for working through a saved list in the
 real world, with wake lock and end-of-run photos.
 **Deliverables:**
@@ -242,7 +246,7 @@ real world, with wake lock and end-of-run photos.
 > two photos at the end, see the session in the DB via the Phase 6
 > history view (or a temporary debug list)."*
 
-### Phase 6 — Shopping history ⏳
+### Phase 6 — Shopping history ✅
 **Goal:** Browse past shopping sessions and re-shop a list.
 **Deliverables:**
 - `/shopping/history` — list of past `ShoppingSession`s newest-first,
@@ -371,12 +375,20 @@ specific saved list. Handle dead links gracefully.
 
 ## Progress Marker
 
-**Done in initial pass:** Phase 0 (full scaffold).
+**Done so far:** Phases 0-6. Full Shopping vertical works end-to-end —
+items, groups, lists with qty + exclusions, Shop it run mode with Screen
+Wake Lock, and history with re-shop. `npm run check` clean.
 
-**Next up:** Phase 1 (verify the scaffold runs end-to-end). Each later
-phase is independent — you can do Shopping (3 → 4 → 5 → 6) before touching
-Chores or Projects, or do all three flavors' CRUD in lock-step. Reminders
-and Import/Export are isolated from feature work.
+**Next up:** Phases 7 (Chores, mirror Shopping minus qty), 8 (Projects,
+mirror Chores with the Step/Process/List naming), 9 (Reminders + ICS deep
+links), 10 (Import/Export UI in Settings — transport already exists), 11
+(polish: branded icons, empty-state copy pass, Lighthouse).
+
+The Shopping pages in [src/pages/shopping/](src/pages/shopping/) are the
+template Chores and Projects will mirror. The list-resolution helper at
+[src/lib/shopping.ts](src/lib/shopping.ts) and the wake-lock hook at
+[src/hooks/useWakeLock.ts](src/hooks/useWakeLock.ts) are reusable as-is
+(or with minor type swaps) for the other flavors.
 
 ---
 

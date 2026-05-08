@@ -1,0 +1,167 @@
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronLeft, Plus, Pencil, Trash2, ChevronUp, ChevronDown, Search, ListChecks, Play } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { useToast } from '@/components/ui/Toast';
+import { deleteShoppingList, reorderShoppingList, useShoppingLists } from '@/db/repo';
+import type { ShoppingList } from '@/types';
+
+export function ShoppingLists() {
+  const lists = useShoppingLists();
+  const toast = useToast();
+  const [query, setQuery] = useState('');
+
+  const sorted = useMemo(() => lists?.slice().sort((a, b) => a.order - b.order) ?? [], [lists]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? sorted.filter((l) => l.name.toLowerCase().includes(q)) : sorted;
+  }, [sorted, query]);
+
+  const onMove = async (list: ShoppingList, dir: -1 | 1) => {
+    const idx = sorted.findIndex((s) => s.id === list.id);
+    const next = idx + dir;
+    if (next < 0 || next >= sorted.length) return;
+    await reorderShoppingList(list.id, next);
+  };
+
+  const onDelete = async (list: ShoppingList) => {
+    if (!confirm(`Delete "${list.name}"? Past sessions for this list are kept.`)) return;
+    await deleteShoppingList(list.id);
+    toast.show('Deleted');
+  };
+
+  return (
+    <div>
+      <Link
+        to="/shopping"
+        className="mb-3 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-50"
+      >
+        <ChevronLeft size={16} /> Shopping
+      </Link>
+      <PageHeader
+        title="Lists"
+        subtitle={`${sorted.length} saved`}
+        action={
+          <Link to="new" className="btn-primary">
+            <Plus size={16} /> New
+          </Link>
+        }
+      />
+
+      {sorted.length > 0 && (
+        <div className="relative mb-4">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
+          />
+          <input
+            className="input pl-9"
+            placeholder="Search lists"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      )}
+
+      {sorted.length === 0 ? (
+        <EmptyState
+          icon={<ListChecks size={28} />}
+          title="No lists yet"
+          description="A list bundles items and groups for one shopping run. Create one and tap Shop it to step through it."
+          action={
+            <Link to="new" className="btn-primary">
+              <Plus size={16} /> Create a list
+            </Link>
+          }
+        />
+      ) : (
+        <ul className="space-y-2">
+          {filtered.map((list) => {
+            const trueIdx = sorted.findIndex((s) => s.id === list.id);
+            const canUp = trueIdx > 0;
+            const canDown = trueIdx < sorted.length - 1;
+            const queryActive = query.trim().length > 0;
+            const itemEntries = list.entries.filter((e) => e.kind === 'item').length;
+            const groupEntries = list.entries.length - itemEntries;
+            return (
+              <li
+                key={list.id}
+                className="flex items-center gap-3 rounded-2xl border border-ink-200 bg-white p-3 dark:border-ink-800 dark:bg-ink-900"
+              >
+                <Link to={list.id} className="min-w-0 flex-1">
+                  <div className="truncate font-medium">{list.name}</div>
+                  <div className="truncate text-xs text-ink-500 dark:text-ink-400">
+                    {list.entries.length === 0
+                      ? 'empty'
+                      : `${itemEntries} item${itemEntries === 1 ? '' : 's'}, ${groupEntries} group${groupEntries === 1 ? '' : 's'}`}
+                  </div>
+                </Link>
+                <Link
+                  to={`${list.id}/run`}
+                  className="btn-secondary h-9 px-3 text-xs"
+                  aria-label={`Shop ${list.name}`}
+                >
+                  <Play size={14} /> Shop
+                </Link>
+                <div className="flex items-center gap-1">
+                  {!queryActive && (
+                    <>
+                      <IconBtn label="Move up" onClick={() => onMove(list, -1)} disabled={!canUp}>
+                        <ChevronUp size={16} />
+                      </IconBtn>
+                      <IconBtn label="Move down" onClick={() => onMove(list, 1)} disabled={!canDown}>
+                        <ChevronDown size={16} />
+                      </IconBtn>
+                    </>
+                  )}
+                  <Link
+                    to={list.id}
+                    aria-label="Edit"
+                    className="rounded-lg p-2 text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800"
+                  >
+                    <Pencil size={16} />
+                  </Link>
+                  <IconBtn label="Delete" onClick={() => onDelete(list)} tone="danger">
+                    <Trash2 size={16} />
+                  </IconBtn>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function IconBtn({
+  children,
+  label,
+  onClick,
+  disabled,
+  tone,
+}: {
+  children: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  tone?: 'danger';
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={[
+        'rounded-lg p-2 transition disabled:opacity-30',
+        tone === 'danger'
+          ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40'
+          : 'text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800',
+      ].join(' ')}
+    >
+      {children}
+    </button>
+  );
+}

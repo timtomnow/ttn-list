@@ -450,7 +450,7 @@ async function nextOrder(getLast: () => Promise<{ order: number } | undefined>):
  * sizes this app deals with (tens to low hundreds of rows per table) and
  * avoids fractional-index drift.
  */
-export async function reorderById<T extends { id: string; order: number }>(
+async function reorderById<T extends { id: string; order: number }>(
   table: { toArray(): Promise<T[]>; bulkPut(rows: T[]): Promise<unknown> },
   id: string,
   newIndex: number,
@@ -466,3 +466,22 @@ export async function reorderById<T extends { id: string; order: number }>(
   });
   await table.bulkPut(rows);
 }
+
+export const reorderShoppingItem = (id: string, newIndex: number) =>
+  reorderById(db.shoppingItems, id, newIndex);
+export const reorderShoppingGroup = (id: string, newIndex: number) =>
+  reorderById(db.shoppingGroups, id, newIndex);
+export const reorderShoppingList = (id: string, newIndex: number) =>
+  reorderById(db.shoppingLists, id, newIndex);
+export const reorderChoreItem = (id: string, newIndex: number) =>
+  reorderById(db.choreItems, id, newIndex);
+export const reorderChoreRoutine = (id: string, newIndex: number) =>
+  reorderById(db.choreRoutines, id, newIndex);
+export const reorderChoreList = (id: string, newIndex: number) =>
+  reorderById(db.choreLists, id, newIndex);
+export const reorderProjectStep = (id: string, newIndex: number) =>
+  reorderById(db.projectSteps, id, newIndex);
+export const reorderProjectProcess = (id: string, newIndex: number) =>
+  reorderById(db.projectProcesses, id, newIndex);
+export const reorderProjectList = (id: string, newIndex: number) =>
+  reorderById(db.projectLists, id, newIndex);
