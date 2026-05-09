@@ -404,7 +404,7 @@ function GroupEntry({
   const excluded = new Set(entry.excludedItemIds ?? []);
 
   return (
-    <li className="rounded-xl border border-ink-200 bg-white p-2 dark:border-ink-800 dark:bg-ink-900">
+    <li className="rounded-xl border-2 border-blue-300 bg-white p-2 dark:border-blue-700 dark:bg-ink-900">
       <div className="flex items-center gap-3">
         <Thumbnail photoId={group?.photoId} size={36} />
         <button
@@ -413,8 +413,14 @@ function GroupEntry({
           onClick={() => setExpanded((e) => !e)}
           aria-expanded={expanded}
         >
-          <div className="truncate text-sm font-medium">
-            {group?.name ?? <em className="text-ink-400">deleted group</em>}
+          <div className="flex items-center gap-1">
+            <span className="truncate text-sm font-medium">
+              {group?.name ?? <em className="text-ink-400">deleted group</em>}
+            </span>
+            <ChevronDown
+              size={14}
+              className={['shrink-0 text-ink-400 transition-transform duration-200', expanded ? 'rotate-180' : ''].join(' ')}
+            />
           </div>
           <div className="text-xs text-ink-500">
             group · {group ? group.members.length : 0} members

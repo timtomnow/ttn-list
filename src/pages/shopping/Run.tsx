@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   ChevronUp,
   ChevronDown,
+  ChevronsDown,
   Camera,
   Eye,
   Lock,
@@ -32,7 +33,7 @@ import type { ShoppingItem, ShoppingResolvedItem } from '@/types';
 import { formatQty, resolveShoppingList, seedResolvedItems } from '@/lib/shopping';
 import { useWakeLock } from '@/hooks/useWakeLock';
 
-type BootInfo = { sessionId: string; snapshotName: string; startedAt: number };
+type BootInfo = { sessionId: string; snapshotName: string; startedAt: number; originalOrder?: string[] };
 
 export function ShoppingRun() {
   const { id } = useParams();
@@ -71,6 +72,7 @@ export function ShoppingRun() {
           sessionId: existing.id,
           snapshotName: existing.listName,
           startedAt: existing.startedAt,
+          originalOrder: existing.originalOrder,
         });
         return;
       }
@@ -79,17 +81,19 @@ export function ShoppingRun() {
       if (!list || !items || !groups) return;
       const rows = resolveShoppingList(list, items, groups);
       const seeded = seedResolvedItems(rows);
+      const originalOrder = seeded.map((r) => r.itemId);
       const startedAt = Date.now();
       const session = await createShoppingSession({
         listId: id,
         listName: list.name,
         startedAt,
         resolvedItems: seeded,
+        originalOrder,
         photoIds: [],
       });
       if (cancelled) return;
       setResolved(seeded);
-      setBoot({ sessionId: session.id, snapshotName: list.name, startedAt });
+      setBoot({ sessionId: session.id, snapshotName: list.name, startedAt, originalOrder });
     })();
     return () => {
       cancelled = true;
@@ -134,6 +138,19 @@ export function ShoppingRun() {
   const toggle = (idx: number) =>
     persist(resolved.map((r, i) => (i === idx ? { ...r, checked: !r.checked } : r)));
 
+  const sinkChecked = () => {
+    const unchecked = resolved.filter((r) => !r.checked);
+    const checked = resolved.filter((r) => r.checked);
+    persist([...unchecked, ...checked]);
+  };
+
+  const resetOrder = () => {
+    if (!boot.originalOrder) return;
+    const rankOf = new Map(boot.originalOrder.map((id, i) => [id, i]));
+    const next = resolved.slice().sort((a, b) => (rankOf.get(a.itemId) ?? Infinity) - (rankOf.get(b.itemId) ?? Infinity));
+    persist(next);
+  };
+
   const onRestart = async () => {
     if (!list || !items || !groups || !id) {
       toast.show('Cannot restart — list libraries not loaded yet', 'error');
@@ -143,16 +160,18 @@ export function ShoppingRun() {
     await deleteShoppingSession(boot.sessionId);
     const rows = resolveShoppingList(list, items, groups);
     const seeded = seedResolvedItems(rows);
+    const originalOrder = seeded.map((r) => r.itemId);
     const startedAt = Date.now();
     const session = await createShoppingSession({
       listId: id,
       listName: list.name,
       startedAt,
       resolvedItems: seeded,
+      originalOrder,
       photoIds: [],
     });
     setResolved(seeded);
-    setBoot({ sessionId: session.id, snapshotName: list.name, startedAt });
+    setBoot({ sessionId: session.id, snapshotName: list.name, startedAt, originalOrder });
     toast.show('Restarted');
   };
 
@@ -214,6 +233,29 @@ export function ShoppingRun() {
           </div>
         }
       />
+
+      {total > 0 && (checkedCount > 0 || boot.originalOrder) && (
+        <div className="mb-4 flex items-center gap-2">
+          {checkedCount > 0 && (
+            <button
+              type="button"
+              className="btn-secondary h-8 px-3 text-sm"
+              onClick={sinkChecked}
+            >
+              <ChevronsDown size={14} /> Bought to bottom
+            </button>
+          )}
+          {boot.originalOrder && (
+            <button
+              type="button"
+              className="h-8 rounded-lg px-3 text-sm text-ink-400 hover:bg-ink-100 hover:text-ink-600 dark:hover:bg-ink-800 dark:hover:text-ink-300"
+              onClick={resetOrder}
+            >
+              Reset order
+            </button>
+          )}
+        </div>
+      )}
 
       {total === 0 ? (
         <EmptyState

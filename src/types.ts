@@ -76,6 +76,8 @@ export type ShoppingSession = {
   completedAt?: number;
   /** Ordered. */
   resolvedItems: ShoppingResolvedItem[];
+  /** Item ID order at session creation — used to restore original order. Non-indexed; no schema version bump needed. */
+  originalOrder?: string[];
   photoIds: string[];
   notes?: string;
 };
