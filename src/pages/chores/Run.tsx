@@ -63,6 +63,7 @@ export function ChoreRun() {
   const [boot, setBoot] = useState<BootInfo | null>(null);
   const [resolved, setResolved] = useState<ChoreResolvedItem[] | null>(null);
   const [mode, setMode] = useState<'running' | 'completing'>('running');
+  const [previewing, setPreviewing] = useState<string | null>(null);
 
   const itemsById = useMemo(() => { const m = new Map<string, ChoreItem>(); items?.forEach((i) => m.set(i.id, i)); return m; }, [items]);
 
@@ -208,6 +209,7 @@ export function ChoreRun() {
                   showCheckmark={showCheckmark}
                   prefs={prefs}
                   onToggle={() => toggle(idx)}
+                  onPreviewPhoto={(photoId) => setPreviewing(photoId)}
                 />
               ))}
             </ul>
@@ -224,6 +226,9 @@ export function ChoreRun() {
       )}
 
       <RunPrefsToolbar prefs={prefs} onSetPrefs={setPrefs} />
+      <Modal open={!!previewing} onClose={() => setPreviewing(null)} title="Photo">
+        {previewing && <div className="flex justify-center"><Thumbnail photoId={previewing} size={320} className="!h-auto !w-full max-w-md" /></div>}
+      </Modal>
     </div>
   );
 }
@@ -237,6 +242,7 @@ function SortableChoreItem({
   showCheckmark,
   prefs,
   onToggle,
+  onPreviewPhoto,
 }: {
   id: string;
   r: ChoreResolvedItem;
@@ -246,6 +252,7 @@ function SortableChoreItem({
   showCheckmark: boolean;
   prefs: RunPrefs;
   onToggle: () => void;
+  onPreviewPhoto: (photoId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
@@ -293,7 +300,13 @@ function SortableChoreItem({
             {r.checked && <Check size={isCondensed ? 10 : 14} />}
           </span>
         )}
-        <Thumbnail photoId={item?.photoId} size={isCondensed ? 32 : 40} />
+        {item?.photoId ? (
+          <button type="button" onClick={() => onPreviewPhoto(item.photoId!)} className="shrink-0 overflow-hidden rounded-xl" aria-label="View photo">
+            <Thumbnail photoId={item.photoId} size={isCondensed ? 32 : 40} />
+          </button>
+        ) : (
+          <Thumbnail photoId={undefined} size={isCondensed ? 32 : 40} />
+        )}
         <button type="button" onClick={onToggle} className={['min-w-0 flex-1 truncate text-left', fontClass, r.checked ? 'line-through' : ''].join(' ')}>
           {item?.name ?? <em className="text-ink-400">deleted item</em>}
         </button>

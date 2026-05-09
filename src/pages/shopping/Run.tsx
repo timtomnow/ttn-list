@@ -64,6 +64,7 @@ export function ShoppingRun() {
   const [boot, setBoot] = useState<BootInfo | null>(null);
   const [resolved, setResolved] = useState<ShoppingResolvedItem[] | null>(null);
   const [mode, setMode] = useState<'shopping' | 'completing'>('shopping');
+  const [previewing, setPreviewing] = useState<string | null>(null);
 
   const itemsById = useMemo(() => {
     const m = new Map<string, ShoppingItem>();
@@ -290,6 +291,7 @@ export function ShoppingRun() {
                   showCheckmark={showCheckmark}
                   prefs={prefs}
                   onToggle={() => toggle(idx)}
+                  onPreviewPhoto={(photoId) => setPreviewing(photoId)}
                 />
               ))}
             </ul>
@@ -310,6 +312,7 @@ export function ShoppingRun() {
       )}
 
       <RunPrefsToolbar prefs={prefs} onSetPrefs={setPrefs} />
+      <PhotoLightbox photoId={previewing} onClose={() => setPreviewing(null)} />
     </div>
   );
 }
@@ -323,6 +326,7 @@ function SortableShoppingItem({
   showCheckmark,
   prefs,
   onToggle,
+  onPreviewPhoto,
 }: {
   id: string;
   r: ShoppingResolvedItem;
@@ -332,6 +336,7 @@ function SortableShoppingItem({
   showCheckmark: boolean;
   prefs: RunPrefs;
   onToggle: () => void;
+  onPreviewPhoto: (photoId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
@@ -399,7 +404,13 @@ function SortableShoppingItem({
             {r.checked && <Check size={isCondensed ? 10 : 14} />}
           </span>
         )}
-        <Thumbnail photoId={item?.photoId} size={isCondensed ? 32 : 40} />
+        {item?.photoId ? (
+          <button type="button" onClick={() => onPreviewPhoto(item.photoId!)} className="shrink-0 overflow-hidden rounded-xl" aria-label="View photo">
+            <Thumbnail photoId={item.photoId} size={isCondensed ? 32 : 40} />
+          </button>
+        ) : (
+          <Thumbnail photoId={undefined} size={isCondensed ? 32 : 40} />
+        )}
         <button type="button" onClick={onToggle} className="flex flex-1 items-center gap-2 text-left">
           <span className={['min-w-0 flex-1 truncate', fontClass, r.checked ? 'line-through' : ''].join(' ')}>
             {item?.name ?? <em className="text-ink-400">deleted item</em>}
