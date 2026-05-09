@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sun, Moon, Monitor, Github, Database, Download, Upload, HelpCircle, ChevronRight } from 'lucide-react';
 import { useTheme, type ThemePref } from '@/app/theme';
+import { useRunPrefs, type RunDensity, type RunFontSize } from '@/hooks/useRunPrefs';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
@@ -81,11 +82,28 @@ export function Settings() {
 
 function AppearanceSection() {
   const { pref, setPref } = useTheme();
-  const options: { id: ThemePref; label: string; Icon: typeof Sun }[] = [
+  const { prefs, setPrefs } = useRunPrefs();
+
+  const themeOptions: { id: ThemePref; label: string; Icon: typeof Sun }[] = [
     { id: 'system', label: 'System', Icon: Monitor },
     { id: 'light', label: 'Light', Icon: Sun },
     { id: 'dark', label: 'Dark', Icon: Moon },
   ];
+
+  const densityOptions: { id: RunDensity; label: string }[] = [
+    { id: 'clean', label: 'Clean' },
+    { id: 'condensed', label: 'Condensed' },
+  ];
+
+  const fontOptions: { id: RunFontSize; label: string; sz: string }[] = [
+    { id: 'small', label: 'Small', sz: 'text-xs' },
+    { id: 'default', label: 'Default', sz: 'text-sm' },
+    { id: 'large', label: 'Large', sz: 'text-base' },
+  ];
+
+  const activeBtn = 'border-ink-900 bg-ink-900 text-ink-50 dark:border-ink-50 dark:bg-ink-50 dark:text-ink-900';
+  const inactiveBtn = 'border-ink-200 bg-white text-ink-700 hover:border-ink-300 dark:border-ink-800 dark:bg-ink-900 dark:text-ink-300 dark:hover:border-ink-700';
+
   return (
     <section className="mt-2">
       <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-400 dark:text-ink-500">Appearance</h2>
@@ -93,16 +111,48 @@ function AppearanceSection() {
         <div className="text-sm font-medium">Theme</div>
         <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">System follows your device setting.</p>
         <div className="mt-4 grid grid-cols-3 gap-2">
-          {options.map(({ id, label, Icon }) => {
+          {themeOptions.map(({ id, label, Icon }) => {
             const active = pref === id;
             return (
               <button key={id} type="button" onClick={() => setPref(id)} aria-pressed={active}
-                className={['flex flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm transition', active ? 'border-ink-900 bg-ink-900 text-ink-50 dark:border-ink-50 dark:bg-ink-50 dark:text-ink-900' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300 dark:border-ink-800 dark:bg-ink-900 dark:text-ink-300 dark:hover:border-ink-700'].join(' ')}>
+                className={['flex flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm transition', active ? activeBtn : inactiveBtn].join(' ')}>
                 <Icon size={18} />
                 {label}
               </button>
             );
           })}
+        </div>
+
+        <div className="mt-5 border-t border-ink-100 pt-4 dark:border-ink-800">
+          <div className="text-sm font-medium">Run view density</div>
+          <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">Affects Shop It, Chore Run, and Project Run only.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {densityOptions.map(({ id, label }) => {
+              const active = prefs.density === id;
+              return (
+                <button key={id} type="button" onClick={() => setPrefs({ density: id })} aria-pressed={active}
+                  className={['flex items-center justify-center rounded-xl border px-3 py-2.5 text-sm font-medium transition', active ? activeBtn : inactiveBtn].join(' ')}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="text-sm font-medium">Run view text size</div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {fontOptions.map(({ id, label, sz }) => {
+              const active = prefs.fontSize === id;
+              return (
+                <button key={id} type="button" onClick={() => setPrefs({ fontSize: id })} aria-pressed={active}
+                  className={['flex flex-col items-center justify-center gap-1 rounded-xl border px-3 py-2.5 transition', active ? activeBtn : inactiveBtn].join(' ')}>
+                  <span className={[sz, 'font-medium'].join(' ')}>Aa</span>
+                  <span className="text-xs">{label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

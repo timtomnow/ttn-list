@@ -1,6 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronUp, ChevronDown, Camera, Eye, Lock, Unlock, X, Check, RotateCcw } from 'lucide-react';
+import {
+  ChevronLeft,
+  Camera,
+  Eye,
+  Lock,
+  Unlock,
+  X,
+  Check,
+  RotateCcw,
+  GripVertical,
+} from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  rectSortingStrategy,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal } from '@/components/ui/Modal';
@@ -20,6 +49,7 @@ import {
 import type { ProjectStep, ProjectResolvedStep } from '@/types';
 import { resolveProjectList, seedResolvedProjectSteps } from '@/lib/projects';
 import { useWakeLock } from '@/hooks/useWakeLock';
+import { useRunPrefs, type RunPrefs } from '@/hooks/useRunPrefs';
 
 type BootInfo = { sessionId: string; snapshotName: string; startedAt: number };
 
@@ -30,12 +60,19 @@ export function ProjectRun() {
   const processes = useProjectProcesses();
   const navigate = useNavigate();
   const toast = useToast();
+  const { prefs, setPrefs } = useRunPrefs();
 
   const [boot, setBoot] = useState<BootInfo | null>(null);
   const [resolved, setResolved] = useState<ProjectResolvedStep[] | null>(null);
   const [mode, setMode] = useState<'running' | 'completing'>('running');
 
   const stepsById = useMemo(() => { const m = new Map<string, ProjectStep>(); steps?.forEach((s) => m.set(s.id, s)); return m; }, [steps]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   useEffect(() => {
     if (boot) return;
@@ -64,7 +101,17 @@ export function ProjectRun() {
   const wakeLock = useWakeLock(true);
 
   if (!boot || !resolved) {
-    return <div><Link to="/projects/lists" className="mb-3 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-50"><ChevronLeft size={16} /> Lists</Link><p className="text-sm text-ink-500">Preparing…</p></div>;
+    return (
+      <div>
+        <Link
+          to="/projects/lists"
+          className="inline-flex items-center rounded-lg p-1 text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800"
+        >
+          <ChevronLeft size={22} />
+        </Link>
+        <p className="mt-3 text-sm text-ink-500">Preparing…</p>
+      </div>
+    );
   }
 
   const persist = (next: ProjectResolvedStep[]) => {
@@ -72,13 +119,12 @@ export function ProjectRun() {
     void updateProjectSession(boot.sessionId, { resolvedSteps: next });
   };
 
-  const move = (idx: number, dir: -1 | 1) => {
-    const next = idx + dir;
-    if (next < 0 || next >= resolved.length) return;
-    const out = resolved.slice();
-    const [m] = out.splice(idx, 1);
-    out.splice(next, 0, m);
-    persist(out);
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = Number(String(active.id).replace('pi-', ''));
+    const newIdx = Number(String(over.id).replace('pi-', ''));
+    if (!isNaN(oldIdx) && !isNaN(newIdx)) persist(arrayMove(resolved, oldIdx, newIdx));
   };
 
   const toggle = (idx: number) => persist(resolved.map((r, i) => (i === idx ? { ...r, checked: !r.checked } : r)));
@@ -100,6 +146,10 @@ export function ProjectRun() {
   const total = resolved.length;
   const allChecked = total > 0 && checkedCount === total;
 
+  const isTwoCol = prefs.density === 'condensed' && prefs.fontSize === 'small';
+  const isCondensed = prefs.density === 'condensed';
+  const showCheckmark = !(isCondensed && prefs.fontSize === 'small');
+
   if (mode === 'completing') {
     return <CompletionView sessionId={boot.sessionId} listName={boot.snapshotName} resolved={resolved} stepsById={stepsById}
       onCancel={() => setMode('running')}
@@ -108,43 +158,190 @@ export function ProjectRun() {
 
   return (
     <div>
-      <Link to="/projects/lists" className="mb-3 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-50"><ChevronLeft size={16} /> Lists</Link>
-      <PageHeader title={boot.snapshotName}
-        subtitle={<span className="inline-flex items-center gap-2"><span>{checkedCount} of {total} checked</span><WakeLockBadge state={wakeLock} /></span>}
-        action={
-          <div className="flex gap-1.5">
-            <button type="button" className="btn-ghost h-9 px-2" onClick={onRestart} aria-label="Restart run" title="Restart run"><RotateCcw size={16} /></button>
-            <button type="button" className="btn-primary" onClick={() => setMode('completing')} disabled={total === 0 && checkedCount === 0}><Check size={16} /> Done</button>
-          </div>
-        }
-      />
+      <header className="mb-4 flex items-center gap-2">
+        <Link
+          to="/projects/lists"
+          className="shrink-0 rounded-lg p-1 text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800"
+        >
+          <ChevronLeft size={22} />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-xl font-semibold tracking-tight">{boot.snapshotName}</h1>
+          <p className="inline-flex items-center gap-2 text-sm text-ink-500 dark:text-ink-400">
+            {checkedCount} of {total} checked
+            <WakeLockBadge state={wakeLock} />
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-1.5">
+          <button type="button" className="btn-ghost h-9 px-2" onClick={onRestart} aria-label="Restart run" title="Restart run">
+            <RotateCcw size={16} />
+          </button>
+          <button type="button" className="btn-primary" onClick={() => setMode('completing')} disabled={total === 0 && checkedCount === 0}>
+            <Check size={16} /> Done
+          </button>
+        </div>
+      </header>
 
       {total === 0 ? (
         <EmptyState title="Nothing to do" description="This list is empty, or every step has been deleted from your library."
           action={<button type="button" className="btn-primary" onClick={() => setMode('completing')}>Wrap up anyway</button>} />
       ) : (
-        <ul className="space-y-2">
-          {resolved.map((r, idx) => {
-            const step = stepsById.get(r.stepId);
-            return (
-              <li key={`${r.stepId}-${idx}`}>
-                <button type="button" onClick={() => toggle(idx)}
-                  className={['flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition', r.checked ? 'border-ink-200/60 bg-ink-50 text-ink-400 dark:border-ink-800/60 dark:bg-ink-900/40 dark:text-ink-500' : 'border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900'].join(' ')}>
-                  <span className={['grid h-7 w-7 shrink-0 place-items-center rounded-full border-2', r.checked ? 'border-ink-900 bg-ink-900 text-ink-50 dark:border-ink-50 dark:bg-ink-50 dark:text-ink-900' : 'border-ink-300 dark:border-ink-600'].join(' ')} aria-hidden>{r.checked && <Check size={14} />}</span>
-                  <Thumbnail photoId={step?.photoId} size={40} />
-                  <span className={['min-w-0 flex-1 truncate text-base', r.checked ? 'line-through' : ''].join(' ')}>{step?.name ?? <em className="text-ink-400">deleted step</em>}</span>
-                </button>
-                <div className="mt-1 flex justify-end gap-1">
-                  <button type="button" aria-label="Move up" onClick={() => move(idx, -1)} disabled={idx === 0} className="rounded-lg p-1 text-ink-400 hover:bg-ink-100 disabled:opacity-30 dark:hover:bg-ink-800"><ChevronUp size={16} /></button>
-                  <button type="button" aria-label="Move down" onClick={() => move(idx, 1)} disabled={idx === total - 1} className="rounded-lg p-1 text-ink-400 hover:bg-ink-100 disabled:opacity-30 dark:hover:bg-ink-800"><ChevronDown size={16} /></button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={resolved.map((_, idx) => `pi-${idx}`)}
+            strategy={isTwoCol ? rectSortingStrategy : verticalListSortingStrategy}
+          >
+            <ul className={isTwoCol ? 'grid grid-cols-2 gap-1' : isCondensed ? 'space-y-1' : 'space-y-2'}>
+              {resolved.map((r, idx) => (
+                <SortableProjectItem
+                  key={`pi-${idx}`}
+                  id={`pi-${idx}`}
+                  r={r}
+                  step={stepsById.get(r.stepId)}
+                  isCondensed={isCondensed}
+                  isTwoCol={isTwoCol}
+                  showCheckmark={showCheckmark}
+                  prefs={prefs}
+                  onToggle={() => toggle(idx)}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
 
-      {allChecked && <div className="sticky bottom-4 mt-6"><button type="button" className="btn-primary w-full shadow-lg" onClick={() => setMode('completing')}><Check size={16} /> Wrap up</button></div>}
+      {allChecked && (
+        <div className="mt-4">
+          <button type="button" className="btn-primary w-full shadow-lg" onClick={() => setMode('completing')}>
+            <Check size={16} /> Wrap up
+          </button>
+        </div>
+      )}
+
+      <RunPrefsToolbar prefs={prefs} onSetPrefs={setPrefs} />
+    </div>
+  );
+}
+
+function SortableProjectItem({
+  id,
+  r,
+  step,
+  isCondensed,
+  isTwoCol,
+  showCheckmark,
+  prefs,
+  onToggle,
+}: {
+  id: string;
+  r: ProjectResolvedStep;
+  step: ProjectStep | undefined;
+  isCondensed: boolean;
+  isTwoCol: boolean;
+  showCheckmark: boolean;
+  prefs: RunPrefs;
+  onToggle: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    opacity: isDragging ? 0.85 : undefined,
+  };
+
+  const fontClass = prefs.fontSize === 'small' ? 'text-sm' : prefs.fontSize === 'large' ? 'text-lg' : 'text-base';
+
+  const liClass = [
+    'border',
+    isTwoCol ? 'rounded-xl' : isCondensed ? 'rounded-xl' : 'rounded-2xl',
+    r.checked
+      ? 'border-ink-200/60 bg-ink-50 text-ink-400 dark:border-ink-800/60 dark:bg-ink-900/40 dark:text-ink-500'
+      : 'border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900',
+  ].join(' ');
+
+  if (isTwoCol) {
+    return (
+      <li ref={setNodeRef} style={style} {...attributes} className={liClass}>
+        <div className="flex items-center gap-1 px-1.5 py-1.5">
+          <button type="button" {...listeners} className="shrink-0 touch-none cursor-grab text-ink-300 dark:text-ink-700" aria-label="Drag to reorder">
+            <GripVertical size={12} />
+          </button>
+          <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left">
+            <span className={['block truncate text-sm', r.checked ? 'line-through' : ''].join(' ')}>
+              {step?.name ?? <em className="text-ink-400">deleted</em>}
+            </span>
+          </button>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li ref={setNodeRef} style={style} {...attributes} className={liClass}>
+      <div className={['flex items-center gap-2', isCondensed ? 'px-2 py-1.5' : 'p-3'].join(' ')}>
+        <button type="button" {...listeners} className="shrink-0 touch-none cursor-grab text-ink-300 dark:text-ink-600" aria-label="Drag to reorder">
+          <GripVertical size={isCondensed ? 14 : 16} />
+        </button>
+        {showCheckmark && (
+          <span className={['grid shrink-0 place-items-center rounded-full border-2', isCondensed ? 'h-5 w-5' : 'h-7 w-7', r.checked ? 'border-ink-900 bg-ink-900 text-ink-50 dark:border-ink-50 dark:bg-ink-50 dark:text-ink-900' : 'border-ink-300 dark:border-ink-600'].join(' ')} aria-hidden>
+            {r.checked && <Check size={isCondensed ? 10 : 14} />}
+          </span>
+        )}
+        <Thumbnail photoId={step?.photoId} size={isCondensed ? 32 : 40} />
+        <button type="button" onClick={onToggle} className={['min-w-0 flex-1 truncate text-left', fontClass, r.checked ? 'line-through' : ''].join(' ')}>
+          {step?.name ?? <em className="text-ink-400">deleted step</em>}
+        </button>
+      </div>
+    </li>
+  );
+}
+
+function RunPrefsToolbar({ prefs, onSetPrefs }: { prefs: RunPrefs; onSetPrefs: (p: Partial<RunPrefs>) => void }) {
+  return (
+    <div
+      className="sticky z-10 mt-6 -mx-4 flex items-center justify-center gap-3 border-t border-ink-200 bg-white/95 px-4 py-2 backdrop-blur dark:border-ink-800 dark:bg-ink-950/95 md:static md:mx-0 md:justify-start md:border-0 md:bg-transparent md:backdrop-blur-none md:py-3"
+      style={{ bottom: 'calc(72px + var(--safe-bottom, 0px))' }}
+    >
+      <div className="flex items-center gap-1">
+        {(['clean', 'condensed'] as const).map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => onSetPrefs({ density: d })}
+            aria-pressed={prefs.density === d}
+            className={[
+              'rounded-lg px-2.5 py-1 text-xs font-medium capitalize transition',
+              prefs.density === d
+                ? 'bg-ink-900 text-ink-50 dark:bg-ink-50 dark:text-ink-900'
+                : 'text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800',
+            ].join(' ')}
+          >
+            {d === 'condensed' ? 'Dense' : 'Clean'}
+          </button>
+        ))}
+      </div>
+      <div className="h-4 w-px bg-ink-200 dark:bg-ink-800" />
+      <div className="flex items-center gap-1">
+        {([['small', 'text-xs'], ['default', 'text-sm'], ['large', 'text-base']] as const).map(([f, sz]) => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => onSetPrefs({ fontSize: f })}
+            aria-pressed={prefs.fontSize === f}
+            aria-label={`Font size: ${f}`}
+            className={[
+              sz,
+              'rounded-lg px-2 py-1 font-medium transition',
+              prefs.fontSize === f
+                ? 'bg-ink-900 text-ink-50 dark:bg-ink-50 dark:text-ink-900'
+                : 'text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800',
+            ].join(' ')}
+          >
+            Aa
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

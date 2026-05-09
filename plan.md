@@ -31,6 +31,7 @@ Each phase is sized so it can be implemented and verified independently.
 | Icons          | **lucide-react**                    | Lightweight, consistent line icons.                                 |
 | State          | React Context + `useLiveQuery`      | No Redux — Dexie's reactive hook is enough.                         |
 | Wake lock      | **Screen Wake Lock API**, best-effort | Works in installed PWAs on Android & iOS 16.4+. No silent-video fallback — if it fails, the screen sleeps as normal. |
+| Drag-and-drop  | **@dnd-kit/core + @dnd-kit/sortable** | Touch-friendly sortable lists in Run views. Replaces up/down chevrons. `TouchSensor` with 200ms delay distinguishes tap-to-check from drag. `@dnd-kit/utilities` provides CSS transform helpers. |
 
 ### Three-tier model — one shape per flavor
 The hardest design decision. The Shopping flavor naturally has three tiers
