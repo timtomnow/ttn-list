@@ -416,10 +416,7 @@ function SortableShoppingItem({
 
 function RunPrefsToolbar({ prefs, onSetPrefs }: { prefs: RunPrefs; onSetPrefs: (p: Partial<RunPrefs>) => void }) {
   return (
-    <div
-      className="sticky z-10 mt-6 -mx-4 flex items-center justify-center gap-3 border-t border-ink-200 bg-white/95 px-4 py-2 backdrop-blur dark:border-ink-800 dark:bg-ink-950/95 md:static md:mx-0 md:justify-start md:border-0 md:bg-transparent md:backdrop-blur-none md:py-3"
-      style={{ bottom: 'calc(72px + var(--safe-bottom, 0px))' }}
-    >
+    <div className="mt-12 flex items-center justify-center gap-3 border-t border-ink-100 pt-5 dark:border-ink-800 md:justify-start">
       <div className="flex items-center gap-1">
         {(['clean', 'condensed'] as const).map((d) => (
           <button
