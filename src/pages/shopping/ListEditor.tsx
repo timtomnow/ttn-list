@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronUp, ChevronDown, Trash2, Plus, Search, X, Sparkles, Play } from 'lucide-react';
+import { ChevronLeft, ChevronUp, ChevronDown, Trash2, Plus, Minus, Search, X, Sparkles, Play } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -355,23 +355,14 @@ function ItemEntry({
 }) {
   return (
     <li className="rounded-xl border border-ink-200 bg-white p-2 dark:border-ink-800 dark:bg-ink-900">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 mb-2">
         <Thumbnail photoId={item?.photoId} size={36} />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">
-            {item?.name ?? <em className="text-ink-400">deleted item</em>}
-          </div>
-          <div className="text-xs text-ink-500">item</div>
+        <div className="min-w-0 flex-1 truncate text-sm font-medium">
+          {item?.name ?? <em className="text-ink-400">deleted item</em>}
         </div>
-        <input
-          type="number"
-          min={0.01}
-          step="any"
-          value={entry.qty}
-          onChange={(e) => onQty(Number(e.target.value) || 1)}
-          className="input h-9 w-20 text-center"
-          aria-label="Quantity"
-        />
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <QtyControls qty={entry.qty} onQty={onQty} label="Quantity" />
         <Arrows canUp={canUp} canDown={canDown} onMove={onMove} />
         <RemoveBtn onClick={onRemove} />
       </div>
@@ -403,9 +394,11 @@ function GroupEntry({
   const [expanded, setExpanded] = useState(false);
   const excluded = new Set(entry.excludedItemIds ?? []);
 
+  const memberCount = group ? group.members.length : 0;
+
   return (
     <li className="rounded-xl border-2 border-blue-300 bg-white p-2 dark:border-blue-700 dark:bg-ink-900">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 mb-2">
         <Thumbnail photoId={group?.photoId} size={36} />
         <button
           type="button"
@@ -422,20 +415,13 @@ function GroupEntry({
               className={['shrink-0 text-ink-400 transition-transform duration-200', expanded ? 'rotate-180' : ''].join(' ')}
             />
           </div>
-          <div className="text-xs text-ink-500">
-            group · {group ? group.members.length : 0} members
-            {excluded.size > 0 && ` · ${excluded.size} excluded`}
-          </div>
         </button>
-        <input
-          type="number"
-          min={0.01}
-          step="any"
-          value={entry.qty}
-          onChange={(e) => onQty(Number(e.target.value) || 1)}
-          className="input h-9 w-20 text-center"
-          aria-label="Group multiplier"
-        />
+        <span className="shrink-0 text-sm font-medium text-blue-500 dark:text-blue-400">
+          ({memberCount}{excluded.size > 0 ? `−${excluded.size}` : ''})
+        </span>
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <QtyControls qty={entry.qty} onQty={onQty} label="Group multiplier" />
         <Arrows canUp={canUp} canDown={canDown} onMove={onMove} />
         <RemoveBtn onClick={onRemove} />
       </div>
@@ -471,6 +457,38 @@ function GroupEntry({
         </div>
       )}
     </li>
+  );
+}
+
+function QtyControls({ qty, onQty, label }: { qty: number; onQty: (q: number) => void; label: string }) {
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        aria-label="Decrease quantity"
+        onClick={() => onQty(Math.max(1, qty - 1))}
+        className="rounded-lg p-1.5 text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800"
+      >
+        <Minus size={14} />
+      </button>
+      <input
+        type="number"
+        min={0.01}
+        step="any"
+        value={qty}
+        onChange={(e) => onQty(Number(e.target.value) || 1)}
+        className="input h-9 w-14 text-center"
+        aria-label={label}
+      />
+      <button
+        type="button"
+        aria-label="Increase quantity"
+        onClick={() => onQty(qty + 1)}
+        className="rounded-lg p-1.5 text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800"
+      >
+        <Plus size={14} />
+      </button>
+    </div>
   );
 }
 
