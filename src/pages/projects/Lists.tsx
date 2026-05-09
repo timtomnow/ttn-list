@@ -1,6 +1,23 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, Plus, Pencil, Trash2, ChevronUp, ChevronDown, Search, ListChecks, Play, Hourglass } from 'lucide-react';
+import { ChevronLeft, Plus, Pencil, Trash2, GripVertical, Search, ListChecks, Play, Hourglass } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
@@ -23,13 +40,25 @@ export function ProjectLists() {
   }, [inProgress]);
 
   const sorted = useMemo(() => lists?.slice().sort((a, b) => a.order - b.order) ?? [], [lists]);
-  const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return q ? sorted.filter((l) => l.name.toLowerCase().includes(q)) : sorted; }, [sorted, query]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? sorted.filter((l) => l.name.toLowerCase().includes(q)) : sorted;
+  }, [sorted, query]);
 
-  const onMove = async (list: ProjectList, dir: -1 | 1) => {
-    const idx = sorted.findIndex((s) => s.id === list.id);
-    const next = idx + dir;
-    if (next < 0 || next >= sorted.length) return;
-    await reorderProjectList(list.id, next);
+  const queryActive = query.trim().length > 0;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const newIdx = sorted.findIndex((s) => s.id === over.id);
+    if (newIdx === -1) return;
+    await reorderProjectList(String(active.id), newIdx);
   };
 
   const onDelete = async (list: ProjectList) => {
@@ -40,68 +69,156 @@ export function ProjectLists() {
 
   return (
     <div>
-      <Link to="/projects" className="mb-3 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-50"><ChevronLeft size={16} /> Projects</Link>
-      <PageHeader title="Lists" subtitle={`${sorted.length} saved`} action={<Link to="new" className="btn-primary"><Plus size={16} /> New</Link>} />
+      <Link
+        to="/projects"
+        className="mb-3 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-50"
+      >
+        <ChevronLeft size={16} /> Projects
+      </Link>
+      <PageHeader
+        title="Lists"
+        subtitle={`${sorted.length} saved`}
+        action={<Link to="new" className="btn-primary"><Plus size={16} /> New</Link>}
+      />
 
       {sorted.length > 0 && (
         <div className="relative mb-4">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-          <input className="input pl-9" placeholder="Search lists" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input
+            className="input pl-9"
+            placeholder="Search lists"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
       )}
 
       {sorted.length === 0 ? (
-        <EmptyState icon={<ListChecks size={28} />} title="No lists yet"
+        <EmptyState
+          icon={<ListChecks size={28} />}
+          title="No lists yet"
           description="A list bundles steps and processes for one project run. Tap Run it to step through."
-          action={<Link to="new" className="btn-primary"><Plus size={16} /> Create a list</Link>} />
+          action={<Link to="new" className="btn-primary"><Plus size={16} /> Create a list</Link>}
+        />
       ) : (
-        <ul className="space-y-2">
-          {filtered.map((list) => {
-            const trueIdx = sorted.findIndex((s) => s.id === list.id);
-            const canUp = trueIdx > 0;
-            const canDown = trueIdx < sorted.length - 1;
-            const queryActive = query.trim().length > 0;
-            const stepEntries = list.entries.filter((e) => e.kind === 'step').length;
-            const processEntries = list.entries.length - stepEntries;
-            return (
-              <li key={list.id} className="flex items-center gap-3 rounded-2xl border border-ink-200 bg-white p-3 dark:border-ink-800 dark:bg-ink-900">
-                <Link to={list.id} className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{list.name}</div>
-                  <div className="truncate text-xs text-ink-500 dark:text-ink-400">
-                    {list.entries.length === 0 ? 'empty' : `${stepEntries} step${stepEntries === 1 ? '' : 's'}, ${processEntries} process${processEntries === 1 ? '' : 'es'}`}
-                  </div>
-                </Link>
-                {(() => {
-                  const ip = inProgressByList.get(list.id);
-                  if (ip) {
-                    const checked = ip.resolvedSteps.filter((r) => r.checked).length;
-                    return (
-                      <Link to={`${list.id}/run`} className="btn-primary h-9 px-3 text-xs" aria-label={`Continue ${list.name}`} title={`Started ${new Date(ip.startedAt).toLocaleString()}`}>
-                        <Hourglass size={14} /> Continue ({checked}/{ip.resolvedSteps.length})
-                      </Link>
-                    );
-                  }
-                  return <Link to={`${list.id}/run`} className="btn-secondary h-9 px-3 text-xs" aria-label={`Run ${list.name}`}><Play size={14} /> Run</Link>;
-                })()}
-                <div className="flex items-center gap-1">
-                  {!queryActive && (
-                    <>
-                      <IconBtn label="Move up" onClick={() => onMove(list, -1)} disabled={!canUp}><ChevronUp size={16} /></IconBtn>
-                      <IconBtn label="Move down" onClick={() => onMove(list, 1)} disabled={!canDown}><ChevronDown size={16} /></IconBtn>
-                    </>
-                  )}
-                  <Link to={list.id} aria-label="Edit" className="rounded-lg p-2 text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800"><Pencil size={16} /></Link>
-                  <IconBtn label="Delete" onClick={() => onDelete(list)} tone="danger"><Trash2 size={16} /></IconBtn>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sorted.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+            <ul className="space-y-2">
+              {filtered.map((list) => {
+                const ip = inProgressByList.get(list.id);
+                const stepEntries = list.entries.filter((e) => e.kind === 'step').length;
+                const processEntries = list.entries.length - stepEntries;
+                const subtitle =
+                  list.entries.length === 0
+                    ? 'empty'
+                    : `${stepEntries} step${stepEntries === 1 ? '' : 's'}, ${processEntries} process${processEntries === 1 ? '' : 'es'}`;
+                const runButton = ip ? (
+                  <Link
+                    to={`${list.id}/run`}
+                    className="btn-primary h-8 px-2.5 text-xs"
+                    aria-label={`Continue ${list.name}`}
+                    title={`Started ${new Date(ip.startedAt).toLocaleString()}`}
+                  >
+                    <Hourglass size={13} /> Continue ({ip.resolvedSteps.filter((r) => r.checked).length}/{ip.resolvedSteps.length})
+                  </Link>
+                ) : (
+                  <Link
+                    to={`${list.id}/run`}
+                    className="btn-secondary h-8 px-2.5 text-xs"
+                    aria-label={`Run ${list.name}`}
+                  >
+                    <Play size={13} /> Run
+                  </Link>
+                );
+                return (
+                  <SortableListRow
+                    key={list.id}
+                    id={list.id}
+                    name={list.name}
+                    subtitle={subtitle}
+                    queryActive={queryActive}
+                    runButton={runButton}
+                    onDelete={() => onDelete(list)}
+                  />
+                );
+              })}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );
 }
 
-function IconBtn({ children, label, onClick, disabled, tone }: { children: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; tone?: 'danger' }) {
-  return <button type="button" onClick={onClick} disabled={disabled} aria-label={label} className={['rounded-lg p-2 transition disabled:opacity-30', tone === 'danger' ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40' : 'text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800'].join(' ')}>{children}</button>;
+function SortableListRow({
+  id,
+  name,
+  subtitle,
+  queryActive,
+  runButton,
+  onDelete,
+}: {
+  id: string;
+  name: string;
+  subtitle: string;
+  queryActive: boolean;
+  runButton: React.ReactNode;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: queryActive,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    opacity: isDragging ? 0.85 : undefined,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      className="rounded-2xl border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900"
+    >
+      <div className="flex items-center gap-2 px-3 pb-0.5 pt-3">
+        {!queryActive && (
+          <button
+            type="button"
+            {...listeners}
+            className="shrink-0 touch-none cursor-grab text-ink-300 hover:text-ink-400 dark:text-ink-700 dark:hover:text-ink-500"
+            aria-label="Drag to reorder"
+          >
+            <GripVertical size={16} />
+          </button>
+        )}
+        <Link to={id} className="min-w-0 flex-1 truncate font-medium">
+          {name}
+        </Link>
+      </div>
+      <div className="flex items-center gap-1 px-2 pb-2">
+        <div className="min-w-0 flex-1 truncate px-1 text-xs text-ink-500 dark:text-ink-400">
+          {subtitle}
+        </div>
+        {runButton}
+        <Link
+          to={id}
+          aria-label="Edit"
+          className="rounded-lg p-1.5 text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800"
+        >
+          <Pencil size={15} />
+        </Link>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label="Delete"
+          className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+    </li>
+  );
 }
