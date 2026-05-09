@@ -161,6 +161,45 @@ describe('resolveShoppingList', () => {
     expect(resolveShoppingList(list([]), undefined, undefined)).toEqual([]);
   });
 
+  it('passes through a temp entry with its name and qty', () => {
+    const result = resolveShoppingList(
+      list([{ kind: 'temp', tempId: 't1', name: 'big chicken', qty: 2 }]),
+      [],
+      [],
+    );
+    expect(result).toEqual([{ itemId: 't1', qty: 2, fromEntryIdx: 0, name: 'big chicken' }]);
+  });
+
+  it('does not dedup temp entries even when names match', () => {
+    const result = resolveShoppingList(
+      list([
+        { kind: 'temp', tempId: 't1', name: 'celery', qty: 1 },
+        { kind: 'temp', tempId: 't2', name: 'celery', qty: 1 },
+      ]),
+      [],
+      [],
+    );
+    expect(result.map((r) => r.itemId)).toEqual(['t1', 't2']);
+    expect(result.every((r) => r.qty === 1)).toBe(true);
+  });
+
+  it('interleaves temp entries with item/group entries in entry order', () => {
+    const items = [item('milk')];
+    const result = resolveShoppingList(
+      list([
+        { kind: 'item', itemId: 'milk', qty: 1 },
+        { kind: 'temp', tempId: 't1', name: 'remember celery', qty: 1 },
+        { kind: 'item', itemId: 'milk', qty: 1 }, // dedups into the first milk row
+      ]),
+      items,
+      [],
+    );
+    expect(result.map((r) => ({ id: r.itemId, name: r.name, qty: r.qty }))).toEqual([
+      { id: 'milk', name: undefined, qty: 2 },
+      { id: 't1', name: 'remember celery', qty: 1 },
+    ]);
+  });
+
   it('handles fractional defaultQty without precision drift on simple cases', () => {
     const items = [item('flour')];
     const recipe = group('recipe', [{ itemId: 'flour', defaultQty: 0.5 }]);

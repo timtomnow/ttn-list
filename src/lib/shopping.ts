@@ -18,6 +18,8 @@ export type ResolvedRow = {
   qty: number;
   /** First entry index that contributed to this row — for diagnostics / re-grouping. */
   fromEntryIdx: number;
+  /** Set only for inline temp items — the name typed in the editor. */
+  name?: string;
 };
 
 /**
@@ -42,6 +44,12 @@ export function resolveShoppingList(
     if (entry.kind === 'item') {
       if (!itemIds.has(entry.itemId)) return;
       addQty(entry.itemId, entry.qty, entryIdx, totals, order);
+      return;
+    }
+    if (entry.kind === 'temp') {
+      // tempId is uuid-unique, so this never collides/dedups with real items.
+      totals.set(entry.tempId, { itemId: entry.tempId, qty: entry.qty, fromEntryIdx: entryIdx, name: entry.name });
+      order.push(entry.tempId);
       return;
     }
     const group = groupById.get(entry.groupId);
@@ -75,7 +83,7 @@ function addQty(
 
 /** Convenience: resolved rows shaped for a `ShoppingSession.resolvedItems` seed. */
 export function seedResolvedItems(rows: ResolvedRow[]): ShoppingResolvedItem[] {
-  return rows.map((r) => ({ itemId: r.itemId, qty: r.qty, checked: false }));
+  return rows.map((r) => ({ itemId: r.itemId, qty: r.qty, checked: false, ...(r.name ? { name: r.name } : {}) }));
 }
 
 /** Format quantities so 1 reads as "1", 1.5 reads as "1.5", 2.0 reads as "2". */

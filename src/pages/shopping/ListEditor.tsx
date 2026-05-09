@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronUp, ChevronDown, Trash2, Plus, Minus, Search, X, Sparkles, Play } from 'lucide-react';
+import { ChevronLeft, ChevronUp, ChevronDown, Trash2, Plus, Minus, Search, X, Sparkles, Play, PenLine } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -16,6 +16,7 @@ import {
 import type { ShoppingItem, ShoppingGroup, ShoppingListEntry } from '@/types';
 import { formatQty, moveEntry, resolveShoppingList } from '@/lib/shopping';
 import { useDeadLinkBail } from '@/hooks/useDeadLinkBail';
+import { newId } from '@/lib/id';
 
 export function ShoppingListEditor() {
   const { id } = useParams();
@@ -32,6 +33,7 @@ export function ShoppingListEditor() {
   const [hydrated, setHydrated] = useState(false);
   const [picker, setPicker] = useState<'item' | 'group' | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tempInput, setTempInput] = useState('');
 
   useEffect(() => {
     if (isNew) { setHydrated(true); return; }
@@ -112,6 +114,18 @@ export function ShoppingListEditor() {
       ...ids.map<ShoppingListEntry>((itemId) => ({ kind: 'item', itemId, qty: 1 })),
     ]);
     setPicker(null);
+  };
+  const addTempItems = () => {
+    const names = tempInput
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (names.length === 0) return;
+    setEntries((prev) => [
+      ...prev,
+      ...names.map<ShoppingListEntry>((name) => ({ kind: 'temp', tempId: newId(), name, qty: 1 })),
+    ]);
+    setTempInput('');
   };
   const addGroups = (ids: string[]) => {
     setEntries((prev) => [
@@ -259,6 +273,16 @@ export function ShoppingListEditor() {
                     onRemove={() => remove(idx)}
                     onQty={(q) => setEntryQty(idx, q)}
                   />
+                ) : e.kind === 'temp' ? (
+                  <TempEntry
+                    key={`${idx}-${e.tempId}`}
+                    entry={e}
+                    canUp={idx > 0}
+                    canDown={idx < entries.length - 1}
+                    onMove={(d) => move(idx, d)}
+                    onRemove={() => remove(idx)}
+                    onQty={(q) => setEntryQty(idx, q)}
+                  />
                 ) : (
                   <GroupEntry
                     key={`${idx}-${e.groupId}`}
@@ -280,6 +304,40 @@ export function ShoppingListEditor() {
 
         <section className="card p-5">
           <div className="mb-3 flex items-center gap-2">
+            <PenLine size={16} className="text-ink-500" />
+            <div className="text-sm font-medium">Temporary items</div>
+            <span className="text-xs text-ink-500">List-only · won't be saved to your library</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="input flex-1"
+              placeholder="celery, remember bread, dish soap"
+              value={tempInput}
+              onChange={(e) => setTempInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addTempItems();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={addTempItems}
+              disabled={!tempInput.trim()}
+            >
+              <Plus size={14} /> Add
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-ink-500 dark:text-ink-400">
+            Separate multiple items with commas.
+          </p>
+        </section>
+
+        <section className="card p-5">
+          <div className="mb-3 flex items-center gap-2">
             <Sparkles size={16} className="text-ink-500" />
             <div className="text-sm font-medium">Preview</div>
             <span className="text-xs text-ink-500">
@@ -297,7 +355,7 @@ export function ShoppingListEditor() {
                 return (
                   <li key={row.itemId} className="flex items-center gap-3">
                     <Thumbnail photoId={item?.photoId} size={28} />
-                    <span className="flex-1 truncate">{item?.name ?? '—'}</span>
+                    <span className="flex-1 truncate">{row.name ?? item?.name ?? '—'}</span>
                     <span className="text-xs text-ink-500">×{formatQty(row.qty)}</span>
                   </li>
                 );
@@ -359,6 +417,44 @@ function ItemEntry({
         <Thumbnail photoId={item?.photoId} size={36} />
         <div className="min-w-0 flex-1 truncate text-sm font-medium">
           {item?.name ?? <em className="text-ink-400">deleted item</em>}
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <QtyControls qty={entry.qty} onQty={onQty} label="Quantity" />
+        <Arrows canUp={canUp} canDown={canDown} onMove={onMove} />
+        <RemoveBtn onClick={onRemove} />
+      </div>
+    </li>
+  );
+}
+
+function TempEntry({
+  entry,
+  canUp,
+  canDown,
+  onMove,
+  onRemove,
+  onQty,
+}: {
+  entry: Extract<ShoppingListEntry, { kind: 'temp' }>;
+  canUp: boolean;
+  canDown: boolean;
+  onMove: (dir: -1 | 1) => void;
+  onRemove: () => void;
+  onQty: (qty: number) => void;
+}) {
+  return (
+    <li className="rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-2 dark:border-amber-700 dark:bg-amber-950/20">
+      <div className="flex items-center gap-3 mb-2">
+        <span
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+          aria-hidden
+        >
+          <PenLine size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium">{entry.name}</div>
+          <div className="text-xs text-ink-500">temporary</div>
         </div>
       </div>
       <div className="flex items-center justify-end gap-2">

@@ -93,7 +93,7 @@ export function ProjectHistoryDetail() {
                 <li key={`${r.stepId}-${i}`} className={['flex items-center gap-2', r.checked ? '' : 'text-ink-400'].join(' ')}>
                   <span aria-hidden className="grid h-5 w-5 place-items-center">{r.checked ? <Check size={14} /> : '·'}</span>
                   <Thumbnail photoId={step?.photoId} size={28} />
-                  <span className={['flex-1 truncate', r.checked ? '' : 'line-through'].join(' ')}>{step?.name ?? <em className="text-ink-300">deleted step</em>}</span>
+                  <span className={['flex-1 truncate', r.checked ? '' : 'line-through'].join(' ')}>{r.name ?? step?.name ?? <em className="text-ink-300">deleted step</em>}</span>
                 </li>
               );
             })}

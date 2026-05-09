@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronUp, ChevronDown, Trash2, Plus, Search, X, Sparkles, Play } from 'lucide-react';
+import { ChevronLeft, ChevronUp, ChevronDown, Trash2, Plus, Search, X, Sparkles, Play, PenLine } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -16,6 +16,7 @@ import {
 import type { ChoreItem, ChoreRoutine, ChoreListEntry } from '@/types';
 import { moveChoreEntry, resolveChoreList } from '@/lib/chores';
 import { useDeadLinkBail } from '@/hooks/useDeadLinkBail';
+import { newId } from '@/lib/id';
 
 export function ChoreListEditor() {
   const { id } = useParams();
@@ -32,6 +33,7 @@ export function ChoreListEditor() {
   const [hydrated, setHydrated] = useState(false);
   const [picker, setPicker] = useState<'item' | 'routine' | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tempInput, setTempInput] = useState('');
 
   useEffect(() => {
     if (isNew) { setHydrated(true); return; }
@@ -80,6 +82,15 @@ export function ChoreListEditor() {
   const addRoutines = (ids: string[]) => {
     setEntries((prev) => [...prev, ...ids.map<ChoreListEntry>((routineId) => ({ kind: 'routine', routineId }))]);
     setPicker(null);
+  };
+  const addTempItems = () => {
+    const names = tempInput.split(',').map((s) => s.trim()).filter(Boolean);
+    if (names.length === 0) return;
+    setEntries((prev) => [
+      ...prev,
+      ...names.map<ChoreListEntry>((name) => ({ kind: 'temp', tempId: newId(), name })),
+    ]);
+    setTempInput('');
   };
 
   const onSave = async () => {
@@ -145,12 +156,43 @@ export function ChoreListEditor() {
               {entries.map((e, idx) =>
                 e.kind === 'item' ? (
                   <ItemEntry key={`${idx}-${e.itemId}`} entry={e} item={itemsById.get(e.itemId)} canUp={idx > 0} canDown={idx < entries.length - 1} onMove={(d) => move(idx, d)} onRemove={() => remove(idx)} />
+                ) : e.kind === 'temp' ? (
+                  <TempEntry key={`${idx}-${e.tempId}`} entry={e} canUp={idx > 0} canDown={idx < entries.length - 1} onMove={(d) => move(idx, d)} onRemove={() => remove(idx)} />
                 ) : (
                   <RoutineEntry key={`${idx}-${e.routineId}`} entry={e} routine={routinesById.get(e.routineId)} items={itemsById} canUp={idx > 0} canDown={idx < entries.length - 1} onMove={(d) => move(idx, d)} onRemove={() => remove(idx)} onToggleExclusion={(memberId) => toggleExclusion(idx, memberId)} />
                 ),
               )}
             </ul>
           )}
+        </section>
+
+        <section className="card p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <PenLine size={16} className="text-ink-500" />
+            <div className="text-sm font-medium">Temporary chores</div>
+            <span className="text-xs text-ink-500">List-only · won't be saved to your library</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="input flex-1"
+              placeholder="wipe stove, sweep porch, take out recycling"
+              value={tempInput}
+              onChange={(e) => setTempInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addTempItems();
+                }
+              }}
+            />
+            <button type="button" className="btn-secondary" onClick={addTempItems} disabled={!tempInput.trim()}>
+              <Plus size={14} /> Add
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-ink-500 dark:text-ink-400">
+            Separate multiple chores with commas.
+          </p>
         </section>
 
         <section className="card p-5">
@@ -168,7 +210,7 @@ export function ChoreListEditor() {
                 return (
                   <li key={row.itemId} className="flex items-center gap-3">
                     <Thumbnail photoId={item?.photoId} size={28} />
-                    <span className="flex-1 truncate">{item?.name ?? '—'}</span>
+                    <span className="flex-1 truncate">{row.name ?? item?.name ?? '—'}</span>
                   </li>
                 );
               })}
@@ -201,6 +243,24 @@ function ItemEntry({ entry, item, canUp, canDown, onMove, onRemove }: { entry: E
       </div>
       {/* keep entry param referenced for type narrowing */}
       <span className="hidden">{entry.itemId}</span>
+    </li>
+  );
+}
+
+function TempEntry({ entry, canUp, canDown, onMove, onRemove }: { entry: Extract<ChoreListEntry, { kind: 'temp' }>; canUp: boolean; canDown: boolean; onMove: (dir: -1 | 1) => void; onRemove: () => void }) {
+  return (
+    <li className="rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-2 dark:border-amber-700 dark:bg-amber-950/20">
+      <div className="flex items-center gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" aria-hidden>
+          <PenLine size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium">{entry.name}</div>
+          <div className="text-xs text-ink-500">temporary</div>
+        </div>
+        <Arrows canUp={canUp} canDown={canDown} onMove={onMove} />
+        <RemoveBtn onClick={onRemove} />
+      </div>
     </li>
   );
 }

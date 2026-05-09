@@ -110,6 +110,27 @@ describe('resolveProjectList', () => {
     expect(result.map((r) => r.stepId)).toEqual(['a']);
   });
 
+  it('passes through a temp entry with its name', () => {
+    const result = resolveProjectList(
+      list([{ kind: 'temp', tempId: 't1', name: 'pick up paint' }]),
+      [],
+      [],
+    );
+    expect(result).toEqual([{ stepId: 't1', fromEntryIdx: 0, name: 'pick up paint' }]);
+  });
+
+  it('does not dedup temp entries even when names match', () => {
+    const result = resolveProjectList(
+      list([
+        { kind: 'temp', tempId: 't1', name: 'measure' },
+        { kind: 'temp', tempId: 't2', name: 'measure' },
+      ]),
+      [],
+      [],
+    );
+    expect(result.map((r) => r.stepId)).toEqual(['t1', 't2']);
+  });
+
   it('handles undefined steps/processes gracefully', () => {
     expect(resolveProjectList(list([]), undefined, undefined)).toEqual([]);
   });

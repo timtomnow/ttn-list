@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronUp, ChevronDown, Trash2, Plus, Search, X, Sparkles, Play } from 'lucide-react';
+import { ChevronLeft, ChevronUp, ChevronDown, Trash2, Plus, Search, X, Sparkles, Play, PenLine } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -16,6 +16,7 @@ import {
 import type { ProjectStep, ProjectProcess, ProjectListEntry } from '@/types';
 import { moveProjectEntry, resolveProjectList } from '@/lib/projects';
 import { useDeadLinkBail } from '@/hooks/useDeadLinkBail';
+import { newId } from '@/lib/id';
 
 export function ProjectListEditor() {
   const { id } = useParams();
@@ -32,6 +33,7 @@ export function ProjectListEditor() {
   const [hydrated, setHydrated] = useState(false);
   const [picker, setPicker] = useState<'step' | 'process' | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tempInput, setTempInput] = useState('');
 
   useEffect(() => {
     if (isNew) { setHydrated(true); return; }
@@ -72,6 +74,15 @@ export function ProjectListEditor() {
 
   const addSteps = (ids: string[]) => { setEntries((prev) => [...prev, ...ids.map<ProjectListEntry>((stepId) => ({ kind: 'step', stepId }))]); setPicker(null); };
   const addProcesses = (ids: string[]) => { setEntries((prev) => [...prev, ...ids.map<ProjectListEntry>((processId) => ({ kind: 'process', processId }))]); setPicker(null); };
+  const addTempItems = () => {
+    const names = tempInput.split(',').map((s) => s.trim()).filter(Boolean);
+    if (names.length === 0) return;
+    setEntries((prev) => [
+      ...prev,
+      ...names.map<ProjectListEntry>((name) => ({ kind: 'temp', tempId: newId(), name })),
+    ]);
+    setTempInput('');
+  };
 
   const onSave = async () => {
     if (!name.trim()) return;
@@ -123,12 +134,43 @@ export function ProjectListEditor() {
               {entries.map((e, idx) =>
                 e.kind === 'step' ? (
                   <StepEntry key={`${idx}-${e.stepId}`} entry={e} step={stepsById.get(e.stepId)} canUp={idx > 0} canDown={idx < entries.length - 1} onMove={(d) => move(idx, d)} onRemove={() => remove(idx)} />
+                ) : e.kind === 'temp' ? (
+                  <TempEntry key={`${idx}-${e.tempId}`} entry={e} canUp={idx > 0} canDown={idx < entries.length - 1} onMove={(d) => move(idx, d)} onRemove={() => remove(idx)} />
                 ) : (
                   <ProcessEntry key={`${idx}-${e.processId}`} entry={e} process={processesById.get(e.processId)} steps={stepsById} canUp={idx > 0} canDown={idx < entries.length - 1} onMove={(d) => move(idx, d)} onRemove={() => remove(idx)} onToggleExclusion={(memberId) => toggleExclusion(idx, memberId)} />
                 ),
               )}
             </ul>
           )}
+        </section>
+
+        <section className="card p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <PenLine size={16} className="text-ink-500" />
+            <div className="text-sm font-medium">Temporary steps</div>
+            <span className="text-xs text-ink-500">List-only · won't be saved to your library</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="input flex-1"
+              placeholder="pick up paint, return drill, call electrician"
+              value={tempInput}
+              onChange={(e) => setTempInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addTempItems();
+                }
+              }}
+            />
+            <button type="button" className="btn-secondary" onClick={addTempItems} disabled={!tempInput.trim()}>
+              <Plus size={14} /> Add
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-ink-500 dark:text-ink-400">
+            Separate multiple steps with commas.
+          </p>
         </section>
 
         <section className="card p-5">
@@ -146,7 +188,7 @@ export function ProjectListEditor() {
                 return (
                   <li key={row.stepId} className="flex items-center gap-3">
                     <Thumbnail photoId={step?.photoId} size={28} />
-                    <span className="flex-1 truncate">{step?.name ?? '—'}</span>
+                    <span className="flex-1 truncate">{row.name ?? step?.name ?? '—'}</span>
                   </li>
                 );
               })}
@@ -176,6 +218,24 @@ function StepEntry({ entry, step, canUp, canDown, onMove, onRemove }: { entry: E
         <RemoveBtn onClick={onRemove} />
       </div>
       <span className="hidden">{entry.stepId}</span>
+    </li>
+  );
+}
+
+function TempEntry({ entry, canUp, canDown, onMove, onRemove }: { entry: Extract<ProjectListEntry, { kind: 'temp' }>; canUp: boolean; canDown: boolean; onMove: (dir: -1 | 1) => void; onRemove: () => void }) {
+  return (
+    <li className="rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-2 dark:border-amber-700 dark:bg-amber-950/20">
+      <div className="flex items-center gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" aria-hidden>
+          <PenLine size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium">{entry.name}</div>
+          <div className="text-xs text-ink-500">temporary</div>
+        </div>
+        <Arrows canUp={canUp} canDown={canDown} onMove={onMove} />
+        <RemoveBtn onClick={onRemove} />
+      </div>
     </li>
   );
 }

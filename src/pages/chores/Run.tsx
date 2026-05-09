@@ -281,7 +281,7 @@ function SortableChoreItem({
           </button>
           <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left">
             <span className={['block truncate text-sm', r.checked ? 'line-through' : ''].join(' ')}>
-              {item?.name ?? <em className="text-ink-400">deleted</em>}
+              {r.name ?? item?.name ?? <em className="text-ink-400">deleted</em>}
             </span>
           </button>
         </div>
@@ -308,7 +308,7 @@ function SortableChoreItem({
           <Thumbnail photoId={undefined} size={isCondensed ? 32 : 40} />
         )}
         <button type="button" onClick={onToggle} className={['min-w-0 flex-1 truncate text-left', fontClass, r.checked ? 'line-through' : ''].join(' ')}>
-          {item?.name ?? <em className="text-ink-400">deleted item</em>}
+          {r.name ?? item?.name ?? <em className="text-ink-400">deleted item</em>}
         </button>
       </div>
     </li>
@@ -436,7 +436,7 @@ function CompletionView({ sessionId, listName, resolved, itemsById, onCancel, on
             return (
               <li key={r.itemId} className={['flex items-center gap-2', r.checked ? '' : 'text-ink-400'].join(' ')}>
                 <span aria-hidden>{r.checked ? '✓' : '·'}</span>
-                <span className={['flex-1 truncate', r.checked ? '' : 'line-through'].join(' ')}>{item?.name ?? '—'}</span>
+                <span className={['flex-1 truncate', r.checked ? '' : 'line-through'].join(' ')}>{r.name ?? item?.name ?? '—'}</span>
               </li>
             );
           })}

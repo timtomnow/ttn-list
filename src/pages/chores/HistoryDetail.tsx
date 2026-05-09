@@ -96,7 +96,7 @@ export function ChoreHistoryDetail() {
                 <li key={`${r.itemId}-${i}`} className={['flex items-center gap-2', r.checked ? '' : 'text-ink-400'].join(' ')}>
                   <span aria-hidden className="grid h-5 w-5 place-items-center">{r.checked ? <Check size={14} /> : '·'}</span>
                   <Thumbnail photoId={item?.photoId} size={28} />
-                  <span className={['flex-1 truncate', r.checked ? '' : 'line-through'].join(' ')}>{item?.name ?? <em className="text-ink-300">deleted item</em>}</span>
+                  <span className={['flex-1 truncate', r.checked ? '' : 'line-through'].join(' ')}>{r.name ?? item?.name ?? <em className="text-ink-300">deleted item</em>}</span>
                 </li>
               );
             })}

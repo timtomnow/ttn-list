@@ -15,6 +15,8 @@ import type {
 export type ResolvedProjectRow = {
   stepId: string;
   fromEntryIdx: number;
+  /** Set only for inline temp items — the name typed in the editor. */
+  name?: string;
 };
 
 export function resolveProjectList(
@@ -32,6 +34,12 @@ export function resolveProjectList(
     if (entry.kind === 'step') {
       if (!stepIds.has(entry.stepId)) return;
       add(entry.stepId, entryIdx, seen, order);
+      return;
+    }
+    if (entry.kind === 'temp') {
+      // tempId is uuid-unique, so this never collides/dedups with real steps.
+      seen.set(entry.tempId, { stepId: entry.tempId, fromEntryIdx: entryIdx, name: entry.name });
+      order.push(entry.tempId);
       return;
     }
     const process = processById.get(entry.processId);
@@ -59,7 +67,7 @@ function add(
 }
 
 export function seedResolvedProjectSteps(rows: ResolvedProjectRow[]): ProjectResolvedStep[] {
-  return rows.map((r) => ({ stepId: r.stepId, checked: false }));
+  return rows.map((r) => ({ stepId: r.stepId, checked: false, ...(r.name ? { name: r.name } : {}) }));
 }
 
 export function moveProjectEntry(

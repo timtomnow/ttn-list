@@ -102,6 +102,27 @@ describe('resolveChoreList', () => {
     expect(result.map((x) => x.itemId)).toEqual(['a']);
   });
 
+  it('passes through a temp entry with its name', () => {
+    const result = resolveChoreList(
+      list([{ kind: 'temp', tempId: 't1', name: 'wipe stove' }]),
+      [],
+      [],
+    );
+    expect(result).toEqual([{ itemId: 't1', fromEntryIdx: 0, name: 'wipe stove' }]);
+  });
+
+  it('does not dedup temp entries even when names match', () => {
+    const result = resolveChoreList(
+      list([
+        { kind: 'temp', tempId: 't1', name: 'sweep' },
+        { kind: 'temp', tempId: 't2', name: 'sweep' },
+      ]),
+      [],
+      [],
+    );
+    expect(result.map((r) => r.itemId)).toEqual(['t1', 't2']);
+  });
+
   it('handles undefined items/routines gracefully', () => {
     expect(resolveChoreList(list([]), undefined, undefined)).toEqual([]);
   });

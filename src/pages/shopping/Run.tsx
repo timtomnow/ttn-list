@@ -370,7 +370,7 @@ function SortableShoppingItem({
           </button>
           <button type="button" onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-1 text-left">
             <span className={['min-w-0 flex-1 truncate text-sm', r.checked ? 'line-through' : ''].join(' ')}>
-              {item?.name ?? <em className="text-ink-400">deleted</em>}
+              {r.name ?? item?.name ?? <em className="text-ink-400">deleted</em>}
             </span>
             <span className="shrink-0 text-xs text-ink-500">×{formatQty(r.qty)}</span>
           </button>
@@ -413,7 +413,7 @@ function SortableShoppingItem({
         )}
         <button type="button" onClick={onToggle} className="flex flex-1 items-center gap-2 text-left">
           <span className={['min-w-0 flex-1 truncate', fontClass, r.checked ? 'line-through' : ''].join(' ')}>
-            {item?.name ?? <em className="text-ink-400">deleted item</em>}
+            {r.name ?? item?.name ?? <em className="text-ink-400">deleted item</em>}
           </span>
           <span className="shrink-0 text-sm font-medium text-ink-500">×{formatQty(r.qty)}</span>
         </button>
@@ -617,7 +617,7 @@ function CompletionView({
               >
                 <span aria-hidden>{r.checked ? '✓' : '·'}</span>
                 <span className={['flex-1 truncate', r.checked ? '' : 'line-through'].join(' ')}>
-                  {item?.name ?? '—'}
+                  {r.name ?? item?.name ?? '—'}
                 </span>
                 <span className="text-xs text-ink-500">×{formatQty(r.qty)}</span>
               </li>

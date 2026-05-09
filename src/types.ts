@@ -48,7 +48,8 @@ export type ShoppingGroup = {
 
 export type ShoppingListEntry =
   | { kind: 'item'; itemId: string; qty: number }
-  | { kind: 'group'; groupId: string; qty: number; excludedItemIds?: string[] };
+  | { kind: 'group'; groupId: string; qty: number; excludedItemIds?: string[] }
+  | { kind: 'temp'; tempId: string; name: string; qty: number };
 
 export type ShoppingList = {
   id: string;
@@ -65,6 +66,8 @@ export type ShoppingResolvedItem = {
   itemId: string;
   qty: number;
   checked: boolean;
+  /** Set only for inline temp items (no library record). `itemId` doubles as the tempId. */
+  name?: string;
 };
 
 export type ShoppingSession = {
@@ -112,7 +115,8 @@ export type ChoreRoutine = {
 
 export type ChoreListEntry =
   | { kind: 'item'; itemId: string }
-  | { kind: 'routine'; routineId: string; excludedItemIds?: string[] };
+  | { kind: 'routine'; routineId: string; excludedItemIds?: string[] }
+  | { kind: 'temp'; tempId: string; name: string };
 
 export type ChoreList = {
   id: string;
@@ -128,6 +132,8 @@ export type ChoreList = {
 export type ChoreResolvedItem = {
   itemId: string;
   checked: boolean;
+  /** Set only for inline temp items (no library record). `itemId` doubles as the tempId. */
+  name?: string;
 };
 
 export type ChoreSession = {
@@ -172,7 +178,8 @@ export type ProjectProcess = {
 
 export type ProjectListEntry =
   | { kind: 'step'; stepId: string }
-  | { kind: 'process'; processId: string; excludedStepIds?: string[] };
+  | { kind: 'process'; processId: string; excludedStepIds?: string[] }
+  | { kind: 'temp'; tempId: string; name: string };
 
 export type ProjectList = {
   id: string;
@@ -188,6 +195,8 @@ export type ProjectList = {
 export type ProjectResolvedStep = {
   stepId: string;
   checked: boolean;
+  /** Set only for inline temp items (no library record). `stepId` doubles as the tempId. */
+  name?: string;
 };
 
 export type ProjectSession = {

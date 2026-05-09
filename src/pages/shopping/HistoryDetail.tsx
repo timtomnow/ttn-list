@@ -174,7 +174,7 @@ export function ShoppingHistoryDetail() {
                   </span>
                   <Thumbnail photoId={item?.photoId} size={28} />
                   <span className={['flex-1 truncate', r.checked ? '' : 'line-through'].join(' ')}>
-                    {item?.name ?? <em className="text-ink-300">deleted item</em>}
+                    {r.name ?? item?.name ?? <em className="text-ink-300">deleted item</em>}
                   </span>
                   <span className="text-xs text-ink-500">×{formatQty(r.qty)}</span>
                 </li>

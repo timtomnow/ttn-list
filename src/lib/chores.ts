@@ -15,6 +15,8 @@ import type {
 export type ResolvedChoreRow = {
   itemId: string;
   fromEntryIdx: number;
+  /** Set only for inline temp items — the name typed in the editor. */
+  name?: string;
 };
 
 /**
@@ -38,6 +40,12 @@ export function resolveChoreList(
     if (entry.kind === 'item') {
       if (!itemIds.has(entry.itemId)) return;
       add(entry.itemId, entryIdx, seen, order);
+      return;
+    }
+    if (entry.kind === 'temp') {
+      // tempId is uuid-unique, so this never collides/dedups with real items.
+      seen.set(entry.tempId, { itemId: entry.tempId, fromEntryIdx: entryIdx, name: entry.name });
+      order.push(entry.tempId);
       return;
     }
     const routine = routineById.get(entry.routineId);
@@ -65,7 +73,7 @@ function add(
 }
 
 export function seedResolvedChoreItems(rows: ResolvedChoreRow[]): ChoreResolvedItem[] {
-  return rows.map((r) => ({ itemId: r.itemId, checked: false }));
+  return rows.map((r) => ({ itemId: r.itemId, checked: false, ...(r.name ? { name: r.name } : {}) }));
 }
 
 export function moveChoreEntry(
