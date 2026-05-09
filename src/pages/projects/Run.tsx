@@ -4,8 +4,6 @@ import {
   ChevronLeft,
   Camera,
   Eye,
-  Lock,
-  Unlock,
   X,
   Check,
   RotateCcw,
@@ -98,7 +96,7 @@ export function ProjectRun() {
     return () => { cancelled = true; };
   }, [id, list, steps, processes, boot]);
 
-  const wakeLock = useWakeLock(true);
+  useWakeLock(true);
 
   if (!boot || !resolved) {
     return (
@@ -167,9 +165,8 @@ export function ProjectRun() {
         </Link>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-semibold tracking-tight">{boot.snapshotName}</h1>
-          <p className="inline-flex items-center gap-2 text-sm text-ink-500 dark:text-ink-400">
-            {checkedCount} of {total} checked
-            <WakeLockBadge state={wakeLock} />
+          <p className="inline-flex items-center gap-1 text-sm text-ink-500 dark:text-ink-400">
+            {checkedCount} of {total} <Check size={13} />
           </p>
         </div>
         <div className="flex shrink-0 gap-1.5">
@@ -343,11 +340,6 @@ function RunPrefsToolbar({ prefs, onSetPrefs }: { prefs: RunPrefs; onSetPrefs: (
   );
 }
 
-function WakeLockBadge({ state }: { state: ReturnType<typeof useWakeLock> }) {
-  if (state.status === 'active') return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"><Lock size={10} /> screen on</span>;
-  if (state.status === 'unsupported' || state.status === 'error') return <span className="inline-flex items-center gap-1 rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-medium text-ink-500 dark:bg-ink-800 dark:text-ink-400" title={state.status === 'error' ? state.message : 'Wake lock not supported on this browser'}><Unlock size={10} /> may sleep</span>;
-  return null;
-}
 
 function CompletionView({ sessionId, listName, resolved, stepsById, onCancel, onSaved }: { sessionId: string; listName: string; resolved: ProjectResolvedStep[]; stepsById: Map<string, ProjectStep>; onCancel: () => void; onSaved: (sessionId: string) => void }) {
   const [photoIds, setPhotoIds] = useState<string[]>([]);
