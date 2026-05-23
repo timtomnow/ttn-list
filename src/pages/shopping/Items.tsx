@@ -210,6 +210,7 @@ function ItemList({ activeTag }: { activeTag: string | null }) {
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<ShoppingItem | null>(null);
   const [creating, setCreating] = useState(false);
+  const [previewing, setPreviewing] = useState<string | null>(null);
 
   const allItems = items ?? [];
   const sorted = useMemo(() => allItems.slice().sort((a, b) => a.order - b.order), [allItems]);
@@ -345,7 +346,18 @@ function ItemList({ activeTag }: { activeTag: string | null }) {
                 key={item.id}
                 className="flex items-center gap-3 rounded-2xl border border-ink-200 bg-white p-3 dark:border-ink-800 dark:bg-ink-900"
               >
-                <Thumbnail photoId={item.photoId} size={48} />
+                {item.photoId ? (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewing(item.photoId!)}
+                    className="shrink-0 overflow-hidden rounded-xl"
+                    aria-label={`View photo for ${item.name}`}
+                  >
+                    <Thumbnail photoId={item.photoId} size={48} />
+                  </button>
+                ) : (
+                  <Thumbnail photoId={item.photoId} size={48} />
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{item.name}</div>
                   {item.notes && (
@@ -441,6 +453,14 @@ function ItemList({ activeTag }: { activeTag: string | null }) {
           toast.show('Saved');
         }}
       />
+
+      <Modal open={!!previewing} onClose={() => setPreviewing(null)} title="Photo">
+        {previewing && (
+          <div className="flex justify-center">
+            <Thumbnail photoId={previewing} size={320} className="!h-auto !w-full max-w-md" />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
