@@ -61,7 +61,7 @@ function TagPicker() {
   const toast = useToast();
   const [creating, setCreating] = useState(false);
 
-  const allItems = items ?? [];
+  const allItems = useMemo(() => items ?? [], [items]);
 
   // Tag counts, sorted by count desc then alphabetically. Keys are
   // case-insensitive; we display the first casing we encounter.
@@ -212,7 +212,7 @@ function ItemList({ activeTag }: { activeTag: string | null }) {
   const [creating, setCreating] = useState(false);
   const [previewing, setPreviewing] = useState<string | null>(null);
 
-  const allItems = items ?? [];
+  const allItems = useMemo(() => items ?? [], [items]);
   const sorted = useMemo(() => allItems.slice().sort((a, b) => a.order - b.order), [allItems]);
 
   // Resolve the activeTag against existing item tags so we display the user's
