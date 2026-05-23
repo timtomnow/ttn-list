@@ -24,6 +24,8 @@ export type ShoppingItem = {
   name: string;
   notes?: string;
   photoId?: string;
+  /** User-defined tags. Case-preserved on write; compared case-insensitively. */
+  tags?: string[];
   order: number;
   createdAt: number;
   updatedAt: number;
