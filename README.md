@@ -22,6 +22,10 @@ your browser.
   list. Recurrence supports daily, weekly with by-day, and monthly.
 - **Import/Export** a single JSON file with everything (including photos)
   for backup or device migration. Merge or replace on import.
+- **ttn-backup integration**: a separate utility PWA at
+  `timtomnow.github.io/ttn-backup/` snapshots TTN List (and other
+  compatible apps) on a calendar schedule into one bundled `.json`.
+  Settings → Restore from ttn-backup pulls any saved bundle back in.
 - **Mobile-first** UI designed for a 375px viewport. Light, dark, and
   system theme.
 - **Installable** as a PWA on iOS and Android. Offline-capable via Workbox.

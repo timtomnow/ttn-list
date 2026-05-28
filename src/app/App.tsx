@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { Shopping } from '@/pages/Shopping';
@@ -8,8 +9,13 @@ import { Settings } from '@/pages/Settings';
 import { Help } from '@/pages/Help';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ThemeProvider } from './theme';
+import { installTtnBackupAdapter } from '@/lib/ttnBackup';
 
 export function App() {
+  useEffect(() => {
+    installTtnBackupAdapter();
+  }, []);
+
   return (
     <ThemeProvider>
       <ToastProvider>

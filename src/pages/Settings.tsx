@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, Monitor, Github, Database, Download, Upload, HelpCircle, ChevronRight } from 'lucide-react';
+import { Sun, Moon, Monitor, Github, Database, Download, Upload, HelpCircle, ChevronRight, Archive } from 'lucide-react';
 import { useTheme, type ThemePref } from '@/app/theme';
 import { useRunPrefs, type RunDensity, type RunFontSize } from '@/hooks/useRunPrefs';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -16,6 +16,7 @@ import {
   type ImportMode,
   type ImportSummary,
 } from '@/db/exportImport';
+import { openTtnBackupRestore } from '@/lib/ttnBackup';
 
 const REPO_URL = 'https://github.com/timtomnow/ttn-list';
 
@@ -236,8 +237,21 @@ function DataSection() {
           <button type="button" className="btn-secondary" onClick={onPickFile}>
             <Upload size={14} /> Import…
           </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              try { openTtnBackupRestore(); }
+              catch (e) { toast.show((e as Error).message, 'error'); }
+            }}
+          >
+            <Archive size={14} /> Restore from ttn-backup
+          </button>
           <input ref={fileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={onFileChange} />
         </div>
+        <p className="mt-3 text-xs text-ink-500 dark:text-ink-400">
+          ttn-backup is a separate utility that snapshots all your TTN apps into one bundle on a schedule. <a href="/ttn-backup/" className="underline">Open ttn-backup →</a>
+        </p>
       </div>
 
       <ImportConfirmModal

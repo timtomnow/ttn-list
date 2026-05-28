@@ -43,9 +43,21 @@ src/
     schema.ts      Dexie database (versioned, all 13 tables)
     repo.ts        typed CRUD + useLiveQuery hooks — components import from here
     exportImport.ts JSON export/import with base64-encoded photos
-  lib/             id, color, date, ics, tags
+  lib/             id, color, date, ics, tags, ttnBackup
   types.ts         All entity types — one source of truth
 ```
+
+The `lib/ttnBackup.ts` module installs `window.TTNBackupAdapter` so the
+cross-app **ttn-backup** utility (a separate PWA at
+`timtomnow.github.io/ttn-backup/`) can snapshot and restore this app's
+data via a hidden same-origin iframe + postMessage. `App.tsx` calls
+`installTtnBackupAdapter()` once on mount; `Settings.tsx` has a "Restore
+from ttn-backup" button that calls `openTtnBackupRestore()`. The
+adapter's `importData` reuses `parseExportPayload` + `importData(payload,
+'replace')` from `db/exportImport.ts` and then reloads the page — same
+contract as the in-app Replace import flow. The client.js script that
+implements the protocol is loaded from `/ttn-backup/client.js` (sibling
+project on GitHub Pages) via a script tag in `index.html`.
 
 ## Data model summary
 Three flavors × three tiers + sessions + a shared `photos` table:
