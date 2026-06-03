@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, Monitor, Github, Database, Download, Upload, HelpCircle, ChevronRight, Archive } from 'lucide-react';
+import { Sun, Moon, Monitor, Github, Database, Download, Upload, HelpCircle, ChevronRight, Archive, Sparkles } from 'lucide-react';
 import { useTheme, type ThemePref } from '@/app/theme';
 import { useRunPrefs, type RunDensity, type RunFontSize } from '@/hooks/useRunPrefs';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -17,6 +17,7 @@ import {
   type ImportSummary,
 } from '@/db/exportImport';
 import { openTtnBackupRestore } from '@/lib/ttnBackup';
+import { seedStarterShoppingItems } from '@/db/repo';
 
 const REPO_URL = 'https://github.com/timtomnow/ttn-list';
 
@@ -57,6 +58,7 @@ export function Settings() {
       </section>
 
       <AppearanceSection />
+      <StarterItemsSection />
       <DataSection />
 
       <section className="mt-10">
@@ -154,6 +156,53 @@ function AppearanceSection() {
               );
             })}
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StarterItemsSection() {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const onSeed = async () => {
+    setBusy(true);
+    try {
+      const added = await seedStarterShoppingItems();
+      toast.show(
+        added > 0
+          ? `Added ${added} starter item${added === 1 ? '' : 's'}`
+          : 'Starter items are already in your library',
+      );
+    } catch (e) {
+      toast.show((e as Error).message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="mt-10">
+      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-400 dark:text-ink-500">Shopping</h2>
+      <div className="card p-5">
+        <div className="flex items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-100 text-ink-700 dark:bg-ink-800 dark:text-ink-300">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <div className="font-medium">Starter grocery items</div>
+            <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">
+              Load ~110 common grocery items into your Shopping library, each
+              pre-tagged by category (Produce, Dairy, Cleaning, and so on).
+              Items you already have are skipped, so it's safe to run again.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <button type="button" className="btn-primary" onClick={onSeed} disabled={busy}>
+            <Sparkles size={14} /> Load starter items
+          </button>
         </div>
       </div>
     </section>

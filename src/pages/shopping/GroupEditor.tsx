@@ -12,6 +12,7 @@ import {
   useShoppingGroup,
   useShoppingItems,
 } from '@/db/repo';
+import { searchItems, matchingTags } from '@/lib/itemSearch';
 import type { ShoppingGroupMember } from '@/types';
 
 export function ShoppingGroupEditor() {
@@ -263,7 +264,7 @@ function ItemPickerModal({
   onClose: () => void;
   onConfirm: (ids: string[]) => void;
   excludeIds: Set<string>;
-  items: { id: string; name: string; photoId?: string }[];
+  items: { id: string; name: string; photoId?: string; tags?: string[] }[];
 }) {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
@@ -276,10 +277,7 @@ function ItemPickerModal({
   }, [open]);
 
   const available = useMemo(() => items.filter((i) => !excludeIds.has(i.id)), [items, excludeIds]);
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? available.filter((i) => i.name.toLowerCase().includes(q)) : available;
-  }, [available, query]);
+  const filtered = useMemo(() => searchItems(available, query), [available, query]);
 
   const toggle = (id: string) =>
     setPicked((prev) => {
@@ -324,7 +322,7 @@ function ItemPickerModal({
               />
               <input
                 className="input pl-9"
-                placeholder="Search items"
+                placeholder="Search items or tags"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -339,9 +337,13 @@ function ItemPickerModal({
                 </button>
               )}
             </div>
+            {filtered.length === 0 && (
+              <p className="py-6 text-center text-sm text-ink-500">No items match “{query}”.</p>
+            )}
             <ul className="max-h-72 space-y-1 overflow-auto">
               {filtered.map((i) => {
                 const checked = picked.has(i.id);
+                const hitTags = matchingTags(i, query);
                 return (
                   <li key={i.id}>
                     <button
@@ -355,7 +357,21 @@ function ItemPickerModal({
                       ].join(' ')}
                     >
                       <Thumbnail photoId={i.photoId} size={36} />
-                      <span className="flex-1 truncate text-sm font-medium">{i.name}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{i.name}</span>
+                        {hitTags.length > 0 && (
+                          <span className="mt-0.5 flex flex-wrap gap-1">
+                            {hitTags.map((t) => (
+                              <span
+                                key={t}
+                                className="rounded-full bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium text-ink-600 dark:bg-ink-800 dark:text-ink-300"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                      </span>
                       <span
                         className={[
                           'grid h-5 w-5 place-items-center rounded-md border',

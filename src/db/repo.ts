@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './schema';
 import { newId } from '@/lib/id';
+import { STARTER_SHOPPING_ITEMS } from '@/lib/seedItems';
 import type {
   ChoreItem,
   ChoreList,
@@ -77,6 +78,36 @@ export function useShoppingItems(): ShoppingItem[] | undefined {
 
 export function useShoppingItem(id: string | null | undefined): ShoppingItem | undefined {
   return useLiveQuery(async () => (id ? await db.shoppingItems.get(id) : undefined), [id]);
+}
+
+/**
+ * Load the curated starter grocery items (see lib/seedItems.ts). Idempotent:
+ * any item whose name already exists in the library (case-insensitive) is
+ * skipped, so this is safe to run more than once. Returns the number added.
+ */
+export async function seedStarterShoppingItems(): Promise<number> {
+  const existing = await db.shoppingItems.toArray();
+  const seen = new Set(existing.map((i) => i.name.trim().toLowerCase()));
+  const last = await db.shoppingItems.orderBy('order').last();
+  let order = last ? last.order + 1 : 0;
+  const now = Date.now();
+
+  const toAdd: ShoppingItem[] = [];
+  for (const seed of STARTER_SHOPPING_ITEMS) {
+    const key = seed.name.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    toAdd.push({
+      id: newId(),
+      name: seed.name,
+      tags: seed.tags,
+      order: order++,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  if (toAdd.length > 0) await db.shoppingItems.bulkAdd(toAdd);
+  return toAdd.length;
 }
 
 // =============================================================================

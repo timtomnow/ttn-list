@@ -15,6 +15,7 @@ import {
 } from '@/db/repo';
 import type { ShoppingItem, ShoppingGroup, ShoppingListEntry } from '@/types';
 import { formatQty, moveEntry, resolveShoppingList } from '@/lib/shopping';
+import { searchItems, matchingTags } from '@/lib/itemSearch';
 import { useDeadLinkBail } from '@/hooks/useDeadLinkBail';
 import { newId } from '@/lib/id';
 
@@ -643,10 +644,7 @@ function PickItemsModal({
   const [query, setQuery] = useState('');
   useEffect(() => { if (open) { setPicked(new Set()); setQuery(''); } }, [open]);
   const available = useMemo(() => items.filter((i) => !excludeIds.has(i.id)), [items, excludeIds]);
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? available.filter((i) => i.name.toLowerCase().includes(q)) : available;
-  }, [available, query]);
+  const filtered = useMemo(() => searchItems(available, query), [available, query]);
 
   return (
     <Modal
@@ -676,7 +674,7 @@ function PickItemsModal({
         <div className="space-y-3">
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-            <input className="input pl-9" placeholder="Search items" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input className="input pl-9" placeholder="Search items or tags" value={query} onChange={(e) => setQuery(e.target.value)} />
             {query && (
               <button
                 type="button"
@@ -688,23 +686,28 @@ function PickItemsModal({
               </button>
             )}
           </div>
-          <ul className="max-h-72 space-y-1 overflow-auto">
-            {filtered.map((i) => (
-              <PickRow
-                key={i.id}
-                photoId={i.photoId}
-                name={i.name}
-                checked={picked.has(i.id)}
-                onClick={() =>
-                  setPicked((p) => {
-                    const n = new Set(p);
-                    if (n.has(i.id)) n.delete(i.id); else n.add(i.id);
-                    return n;
-                  })
-                }
-              />
-            ))}
-          </ul>
+          {filtered.length === 0 ? (
+            <p className="py-6 text-center text-sm text-ink-500">No items match “{query}”.</p>
+          ) : (
+            <ul className="max-h-72 space-y-1 overflow-auto">
+              {filtered.map((i) => (
+                <PickRow
+                  key={i.id}
+                  photoId={i.photoId}
+                  name={i.name}
+                  tags={matchingTags(i, query)}
+                  checked={picked.has(i.id)}
+                  onClick={() =>
+                    setPicked((p) => {
+                      const n = new Set(p);
+                      if (n.has(i.id)) n.delete(i.id); else n.add(i.id);
+                      return n;
+                    })
+                  }
+                />
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </Modal>
@@ -728,10 +731,7 @@ function PickGroupsModal({
   const [query, setQuery] = useState('');
   useEffect(() => { if (open) { setPicked(new Set()); setQuery(''); } }, [open]);
   const available = useMemo(() => groups.filter((g) => !excludeIds.has(g.id)), [groups, excludeIds]);
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? available.filter((g) => g.name.toLowerCase().includes(q)) : available;
-  }, [available, query]);
+  const filtered = useMemo(() => searchItems(available, query), [available, query]);
 
   return (
     <Modal
@@ -791,12 +791,14 @@ function PickRow({
   photoId,
   name,
   subtitle,
+  tags,
   checked,
   onClick,
 }: {
   photoId: string | undefined;
   name: string;
   subtitle?: string;
+  tags?: string[];
   checked: boolean;
   onClick: () => void;
 }) {
@@ -816,6 +818,18 @@ function PickRow({
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{name}</div>
           {subtitle && <div className="truncate text-xs text-ink-500">{subtitle}</div>}
+          {tags && tags.length > 0 && (
+            <div className="mt-0.5 flex flex-wrap gap-1">
+              {tags.map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium text-ink-600 dark:bg-ink-800 dark:text-ink-300"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <span
           className={[

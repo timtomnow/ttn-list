@@ -10,6 +10,7 @@ import {
   Search,
   Package,
   Tag,
+  Sparkles,
   X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -25,6 +26,7 @@ import {
   deleteShoppingItem,
   deletePhoto,
   reorderShoppingItem,
+  seedStarterShoppingItems,
   useShoppingItems,
 } from '@/db/repo';
 import { dedupeTags, tagKey, type TagSuggestion } from '@/lib/tags';
@@ -60,8 +62,19 @@ function TagPicker() {
   const items = useShoppingItems();
   const toast = useToast();
   const [creating, setCreating] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const allItems = useMemo(() => items ?? [], [items]);
+
+  const onSeed = async () => {
+    setSeeding(true);
+    try {
+      const added = await seedStarterShoppingItems();
+      toast.show(added > 0 ? `Added ${added} starter items` : 'Starter items already in your library');
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   // Tag counts, sorted by count desc then alphabetically. Keys are
   // case-insensitive; we display the first casing we encounter.
@@ -103,11 +116,21 @@ function TagPicker() {
         <EmptyState
           icon={<Package size={28} />}
           title="No items yet"
-          description="Add reusable line items here, then drop them into a list."
+          description="Add reusable line items here, then drop them into a list. Or start with a set of common grocery items, already tagged by category."
           action={
-            <button type="button" className="btn-primary" onClick={() => setCreating(true)}>
-              <Plus size={16} /> Add an item
-            </button>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={onSeed}
+                disabled={seeding}
+              >
+                <Sparkles size={16} /> Load starter grocery items
+              </button>
+              <button type="button" className="btn-ghost" onClick={() => setCreating(true)}>
+                <Plus size={16} /> Add one manually
+              </button>
+            </div>
           }
         />
       ) : (
