@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, Monitor, Github, Database, Download, Upload, HelpCircle, ChevronRight, Archive, Sparkles } from 'lucide-react';
+import { Sun, Moon, Monitor, Github, Database, Download, Upload, HelpCircle, ChevronRight, Archive, Sparkles, LayoutGrid } from 'lucide-react';
 import { useTheme, type ThemePref } from '@/app/theme';
 import { useRunPrefs, type RunDensity, type RunFontSize } from '@/hooks/useRunPrefs';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -20,6 +20,7 @@ import { openTtnBackupRestore } from '@/lib/ttnBackup';
 import { seedStarterShoppingItems } from '@/db/repo';
 
 const REPO_URL = 'https://github.com/timtomnow/ttn-list';
+const PORTFOLIO_URL = 'https://timtomnow.github.io/app-portfolio/';
 
 export function Settings() {
   return (
@@ -29,7 +30,7 @@ export function Settings() {
         subtitle="Theme, data, help, and about."
         action={
           <Link
-            to="/settings/help"
+            to="/help"
             className="rounded-lg p-2 text-ink-500 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800"
             aria-label="Help"
             title="Help"
@@ -41,16 +42,16 @@ export function Settings() {
 
       <section className="mt-2">
         <Link
-          to="/settings/help"
+          to="/help"
           className="flex items-center gap-4 rounded-2xl border border-ink-200 bg-white p-4 transition hover:border-ink-300 dark:border-ink-800 dark:bg-ink-900 dark:hover:border-ink-700"
         >
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-ink-100 text-ink-700 dark:bg-ink-800 dark:text-ink-300">
             <HelpCircle size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-medium">Help</div>
+            <div className="font-medium">Help &amp; Guides</div>
             <p className="truncate text-xs text-ink-500 dark:text-ink-400">
-              How TTN List works — tiers, run modes, photos, reminders, backup.
+              Step-by-step walkthroughs — lists, run modes, photos, reminders, backup.
             </p>
           </div>
           <ChevronRight size={18} className="text-ink-400 dark:text-ink-500" />
@@ -74,6 +75,13 @@ export function Settings() {
             <Github size={16} />
             github.com/timtomnow/ttn-list
           </a>
+          <div className="mt-3">
+            <a href={PORTFOLIO_URL} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-medium text-ink-700 hover:text-ink-900 dark:text-ink-300 dark:hover:text-ink-50">
+              <LayoutGrid size={16} />
+              Check out my other apps on the portfolio site →
+            </a>
+          </div>
           <div className="mt-4 border-t border-ink-100 pt-3 text-xs text-ink-400 dark:border-ink-800 dark:text-ink-500">
             © {new Date().getFullYear()} timtomnow · v0.1 · local-first
           </div>

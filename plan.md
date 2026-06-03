@@ -32,6 +32,7 @@ Each phase is sized so it can be implemented and verified independently.
 | State          | React Context + `useLiveQuery`      | No Redux — Dexie's reactive hook is enough.                         |
 | Wake lock      | **Screen Wake Lock API**, best-effort | Works in installed PWAs on Android & iOS 16.4+. No silent-video fallback — if it fails, the screen sleeps as normal. |
 | Drag-and-drop  | **@dnd-kit/core + @dnd-kit/sortable** | Touch-friendly sortable lists in Run views. Replaces up/down chevrons. `TouchSensor` with 200ms delay distinguishes tap-to-check from drag. `@dnd-kit/utilities` provides CSS transform helpers. |
+| In-app help    | **react-markdown + remark-gfm + @tailwindcss/typography** | Renders the `ttn-docs`-authored Markdown guides in `src/content/help/`. Markdown keeps guides editable by hand and version-controlled; the typography plugin styles them with zero custom CSS. Wiring mirrors the `ttn-docs` react-vite adapter (reference app: plot-my-notes). |
 
 ### Three-tier model — one shape per flavor
 The hardest design decision. The Shopping flavor naturally has three tiers

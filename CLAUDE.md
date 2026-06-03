@@ -43,9 +43,21 @@ src/
     schema.ts      Dexie database (versioned, all 13 tables)
     repo.ts        typed CRUD + useLiveQuery hooks — components import from here
     exportImport.ts JSON export/import with base64-encoded photos
-  lib/             id, color, date, ics, tags, ttnBackup
+  lib/             id, color, date, ics, tags, ttnBackup, help
+  content/help/    Markdown user guides (authored by the ttn-docs skill)
   types.ts         All entity types — one source of truth
 ```
+
+## In-app help (ttn-docs)
+The Help section (`/help`, `/help/all`, `/help/section/:slug`, `/help/:slug`)
+is driven by Markdown guides in `src/content/help/*.md`, each with `title /
+category / order / summary` frontmatter. `lib/help.ts` globs them at build time
+(`import.meta.glob`), parses frontmatter, and builds the
+section → process → step model; `pages/Help.tsx` renders the four views with
+`react-markdown` + `remark-gfm` + `@tailwindcss/typography`. To add or update a
+guide, use the **ttn-docs** skill (it targets this exact contract; reference
+app for the wiring is the sibling repo **plot-my-notes**) — don't hand-edit the
+renderer. Cross-link guides as `/help/<slug>`.
 
 The `lib/ttnBackup.ts` module installs `window.TTNBackupAdapter` so the
 cross-app **ttn-backup** utility (a separate PWA at

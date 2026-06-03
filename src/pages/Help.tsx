@@ -1,242 +1,355 @@
-import { Link } from 'react-router-dom';
-import {
-  ChevronLeft,
-  ShoppingCart,
-  ListChecks,
-  Hammer,
-  Bell,
-  Camera,
-  Lock,
-  Hourglass,
-  Repeat,
-  Database,
-  HelpCircle,
-} from 'lucide-react';
+import { isValidElement, useEffect, type ReactNode } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { ArrowLeft, BookOpen, ChevronRight, List } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { PageHeader } from '@/components/ui/PageHeader';
+import {
+  categorySlug,
+  getGuide,
+  getGuidesByCategory,
+  getSection,
+  slugify,
+  type HelpGuide,
+} from '@/lib/help';
 
-export function Help() {
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+/** On navigation to a #hash, scroll the matching element into view. */
+function useScrollToHash() {
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    const el = document.getElementById(decodeURIComponent(hash.slice(1)));
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [hash]);
+}
+
+/** Flatten react-markdown heading children to plain text for slugging. */
+function toText(node: ReactNode): string {
+  if (typeof node === 'string') return node;
+  if (typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(toText).join('');
+  if (isValidElement(node)) return toText((node.props as { children?: ReactNode }).children);
+  return '';
+}
+
+const proseClasses =
+  'prose prose-ink max-w-none dark:prose-invert prose-headings:font-semibold prose-h2:mt-8 prose-h2:text-lg prose-a:text-ink-900 dark:prose-a:text-ink-50 prose-img:rounded-xl prose-img:border prose-img:border-ink-200 dark:prose-img:border-ink-800';
+
+/**
+ * Render a guide's Markdown body, giving every heading a stable id so the
+ * in-page tables of contents can link straight to it. `idPrefix` namespaces
+ * the ids when several guides share one page (section / full-docs views).
+ */
+function GuideArticle({ guide, idPrefix = '' }: { guide: HelpGuide; idPrefix?: string }) {
+  const heading = (Tag: 'h2' | 'h3') =>
+    function HeadingRenderer({ children }: { children?: ReactNode }) {
+      return (
+        <Tag id={idPrefix + slugify(toText(children))} className="scroll-mt-24">
+          {children}
+        </Tag>
+      );
+    };
+  return (
+    <article className={proseClasses}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ h2: heading('h2'), h3: heading('h3') }}>
+        {guide.body}
+      </ReactMarkdown>
+    </article>
+  );
+}
+
+type Crumb = { label: string; to?: string };
+
+function Breadcrumbs({ items }: { items: Crumb[] }) {
+  return (
+    <nav className="mb-4 flex flex-wrap items-center gap-1.5 text-sm text-ink-500 dark:text-ink-400">
+      {items.map((item, i) => (
+        <span key={i} className="flex items-center gap-1.5">
+          {i > 0 && <ChevronRight size={14} className="text-ink-300 dark:text-ink-600" />}
+          {item.to ? (
+            <Link to={item.to} className="font-medium transition hover:text-ink-900 dark:hover:text-ink-50">
+              {item.label}
+            </Link>
+          ) : (
+            <span className="font-medium text-ink-900 dark:text-ink-50">{item.label}</span>
+          )}
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+/** A boxed "on this page" table of contents. Links are in-page anchors. */
+function TocBox({ title = 'On this page', children }: { title?: string; children: ReactNode }) {
+  return (
+    <nav className="mb-8 rounded-xl border border-ink-200 bg-white p-4 dark:border-ink-800 dark:bg-ink-900">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink-400 dark:text-ink-500">
+        <List size={14} />
+        {title}
+      </div>
+      {children}
+    </nav>
+  );
+}
+
+const tocLink =
+  'block rounded-lg px-2 py-1 text-sm text-ink-600 transition hover:bg-ink-100 hover:text-ink-900 dark:text-ink-300 dark:hover:bg-ink-800 dark:hover:text-ink-50';
+
+/** The step-level (heading) list for a single guide, anchoring into `idPrefix`. */
+function GuideSteps({ guide, idPrefix }: { guide: HelpGuide; idPrefix: string }) {
+  if (guide.headings.length === 0) return null;
+  return (
+    <ul className="mt-1 space-y-0.5 border-l border-ink-200 pl-3 dark:border-ink-800">
+      {guide.headings.map((h) => (
+        <li key={h.id} style={{ paddingLeft: (h.level - 2) * 12 }}>
+          <a href={`#${idPrefix}${h.id}`} className={tocLink}>
+            {h.text}
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// /help — the index
+// ---------------------------------------------------------------------------
+
+export function HelpIndex() {
+  const sections = getGuidesByCategory();
+
   return (
     <div>
       <Link
         to="/settings"
         className="mb-3 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-50"
       >
-        <ChevronLeft size={16} /> Settings
+        <ArrowLeft size={16} /> Settings
       </Link>
-      <PageHeader title="Help" subtitle="How TTN List works." />
+      <PageHeader
+        title="Help & Guides"
+        subtitle="Step-by-step walkthroughs for getting things done."
+        action={
+          sections.length > 0 ? (
+            <Link
+              to="/help/all"
+              className="inline-flex items-center gap-2 rounded-xl bg-ink-900 px-3 py-2 text-sm font-medium text-ink-50 transition hover:opacity-90 dark:bg-ink-50 dark:text-ink-900"
+            >
+              <BookOpen size={16} />
+              View full help docs
+            </Link>
+          ) : undefined
+        }
+      />
+      {sections.length === 0 ? (
+        <p className="text-sm text-ink-500 dark:text-ink-400">
+          No guides yet. Generate them with the <span className="font-mono">ttn-docs</span> skill.
+        </p>
+      ) : (
+        <div className="space-y-8">
+          {sections.map((section) => (
+            <section key={section.slug}>
+              <Link
+                to={`/help/section/${section.slug}`}
+                className="mb-3 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-ink-400 transition hover:text-ink-700 dark:text-ink-500 dark:hover:text-ink-300"
+              >
+                {section.category}
+                <ChevronRight size={14} />
+              </Link>
+              <ul className="space-y-2">
+                {section.guides.map((guide) => (
+                  <li key={guide.slug}>
+                    <Link
+                      to={`/help/${guide.slug}`}
+                      className="flex items-start gap-3 rounded-xl border border-ink-200 bg-white px-4 py-3 transition hover:border-ink-300 hover:bg-ink-50 dark:border-ink-800 dark:bg-ink-900 dark:hover:border-ink-700 dark:hover:bg-ink-800"
+                    >
+                      <BookOpen size={18} className="mt-0.5 shrink-0 text-ink-400" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium">{guide.title}</span>
+                        {guide.summary && (
+                          <span className="mt-0.5 block text-sm text-ink-500 dark:text-ink-400">
+                            {guide.summary}
+                          </span>
+                        )}
+                      </span>
+                      <ChevronRight size={18} className="mt-0.5 shrink-0 text-ink-300 dark:text-ink-600" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-      <div className="space-y-6">
-        <Section title="What this app is" icon={<HelpCircle size={18} />}>
-          <p>
-            TTN List is a local-first PWA for three flavors of repeated work:{' '}
-            <strong>Shopping</strong>, <strong>Chores</strong>, and{' '}
-            <strong>Projects</strong>. All three follow the same shape: build a
-            library of reusable items, optionally bundle them into named
-            groups, then assemble saved lists you can run with checkboxes.
-            Everything lives in your browser — no account, no server.
-          </p>
-        </Section>
+// ---------------------------------------------------------------------------
+// /help/:slug — a single process
+// ---------------------------------------------------------------------------
 
-        <Section title="The three tiers" icon={<ListChecks size={18} />}>
-          <p>Within each flavor there are three levels of structure:</p>
-          <table className="mt-3 w-full text-sm">
-            <thead>
-              <tr className="border-b border-ink-200 text-left dark:border-ink-800">
-                <th className="py-2 pr-4 font-medium">Tier</th>
-                <th className="py-2 pr-4 font-medium">Shopping</th>
-                <th className="py-2 pr-4 font-medium">Chores</th>
-                <th className="py-2 pr-4 font-medium">Projects</th>
-              </tr>
-            </thead>
-            <tbody className="text-ink-700 dark:text-ink-300">
-              <tr className="border-b border-ink-100 dark:border-ink-900">
-                <td className="py-2 pr-4">Item</td>
-                <td className="py-2 pr-4">an Item</td>
-                <td className="py-2 pr-4">a Chore</td>
-                <td className="py-2 pr-4">a Step</td>
-              </tr>
-              <tr className="border-b border-ink-100 dark:border-ink-900">
-                <td className="py-2 pr-4">Container</td>
-                <td className="py-2 pr-4">a Group</td>
-                <td className="py-2 pr-4">a Routine</td>
-                <td className="py-2 pr-4">a Process</td>
-              </tr>
-              <tr>
-                <td className="py-2 pr-4">List</td>
-                <td className="py-2 pr-4">a Shopping List</td>
-                <td className="py-2 pr-4">a Chore List</td>
-                <td className="py-2 pr-4">a Project List</td>
-              </tr>
-            </tbody>
-          </table>
-          <p className="mt-3">
-            A <strong>list</strong> can mix free-floating items with whole
-            containers. When you run the list, containers expand to their
-            members. You can exclude individual members on a per-list basis
-            (the &ldquo;I already have lettuce&rdquo; case for shopping; the
-            &ldquo;skip step 3 this time&rdquo; case for projects).
-          </p>
-        </Section>
+export function GuidePage() {
+  useScrollToHash();
+  const { slug } = useParams();
+  const guide = slug ? getGuide(slug) : undefined;
 
-        <Section title="Shopping has quantities; Chores and Projects are binary" icon={<ShoppingCart size={18} />}>
-          <p>
-            Only Shopping carries a quantity field. A list entry might say
-            &ldquo;2 milk&rdquo; or &ldquo;1.5 lbs flour&rdquo;. Group members
-            have a default qty that gets multiplied by the group&rsquo;s qty in
-            the list (so &ldquo;Taco Tuesday × 2&rdquo; doubles every member
-            qty). When the same item shows up across multiple entries, the
-            run-mode preview sums them.
-          </p>
-          <p className="mt-2">
-            Chores and Projects are simpler: each item or step is just done or
-            not done. No qty, no math.
-          </p>
-        </Section>
+  if (!guide) {
+    return (
+      <div>
+        <BackLink to="/help" label="All guides" />
+        <PageHeader title="Guide not found" subtitle="This guide may have moved or not been written yet." />
+      </div>
+    );
+  }
 
-        <Section title="Run modes — Shop it / Chore it / Run it" icon={<Lock size={18} />}>
-          <p>
-            Tap the play button next to a saved list to enter run mode. You
-            get a focused checklist with large tap targets, in-run reordering
-            via up/down arrows, and a screen wake-lock badge so the screen
-            stays awake while you work.
-          </p>
-          <ul className="mt-2 space-y-1.5 list-disc pl-5">
-            <li>
-              <strong>Wake lock</strong> is best-effort. If it&rsquo;s not
-              supported (older browsers, some desktop setups), the badge says{' '}
-              &ldquo;may sleep&rdquo; and the screen behaves as normal.
+  return (
+    <div>
+      <Breadcrumbs
+        items={[
+          { label: 'Help', to: '/help' },
+          { label: guide.category, to: `/help/section/${categorySlug(guide.category)}` },
+          { label: guide.title },
+        ]}
+      />
+      <PageHeader title={guide.title} subtitle={guide.summary || undefined} />
+      {guide.headings.length > 0 && (
+        <TocBox>
+          <GuideSteps guide={guide} idPrefix="" />
+        </TocBox>
+      )}
+      <GuideArticle guide={guide} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// /help/section/:section — every process in one section, on one page
+// ---------------------------------------------------------------------------
+
+export function HelpSectionPage() {
+  useScrollToHash();
+  const { section: sectionSlug } = useParams();
+  const section = sectionSlug ? getSection(sectionSlug) : undefined;
+
+  if (!section) {
+    return (
+      <div>
+        <BackLink to="/help" label="All guides" />
+        <PageHeader title="Section not found" subtitle="This section may have been renamed." />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <Breadcrumbs items={[{ label: 'Help', to: '/help' }, { label: section.category }]} />
+      <PageHeader
+        title={section.category}
+        subtitle={`${section.guides.length} guide${section.guides.length === 1 ? '' : 's'} in this section.`}
+      />
+      <TocBox title="In this section">
+        <ul className="space-y-2">
+          {section.guides.map((guide) => (
+            <li key={guide.slug}>
+              <a href={`#${guide.slug}`} className={`${tocLink} font-medium`}>
+                {guide.title}
+              </a>
+              <GuideSteps guide={guide} idPrefix={`${guide.slug}--`} />
             </li>
-            <li>
-              <strong>In-run reorder</strong> only affects this session, not
-              the saved list itself.
-            </li>
-            <li>
-              <strong>Wrap up</strong> opens the completion screen where you
-              can attach photos and notes before saving the session to
-              history.
-            </li>
-          </ul>
-        </Section>
-
-        <Section title="Resume a partially-completed run" icon={<Hourglass size={18} />}>
-          <p>
-            If you back out of a run mid-way (closed the tab, switched apps,
-            tapped Lists), your progress is preserved. Returning to the lists
-            page, the row for that list will show{' '}
-            <span className="inline-flex items-center gap-1 rounded-full bg-ink-900 px-2 py-0.5 text-xs font-medium text-ink-50 dark:bg-ink-50 dark:text-ink-900">
-              <Hourglass size={11} /> Continue (3/8)
-            </span>{' '}
-            instead of the play button. Tap to pick up exactly where you left
-            off.
-          </p>
-          <p className="mt-2">
-            To start over from scratch instead, open the run and tap the{' '}
-            <strong>Restart</strong> icon (next to Done) — this discards the
-            in-progress state and re-resolves from the current list.
-          </p>
-        </Section>
-
-        <Section title="Photos" icon={<Camera size={18} />}>
-          <p>
-            Items, groups, routines, and processes can each carry a single
-            photo (a thumbnail in lists). Sessions can carry many — useful for
-            haul shots, before/afters, or receipt captures.
-          </p>
-          <p className="mt-2">
-            Photos are stored as native blobs in your browser&rsquo;s
-            IndexedDB, not as base64. They only get base64-encoded when you
-            export a backup, and decoded back to blobs on import.
-          </p>
-        </Section>
-
-        <Section title="History and re-running" icon={<Repeat size={18} />}>
-          <p>
-            Every completed run is saved as a session, viewable under each
-            flavor&rsquo;s History tab. Sessions snapshot the list name, the
-            full checked state, and any attached photos and notes.
-          </p>
-          <p className="mt-2">
-            From a session detail page, &ldquo;Re-shop this list&rdquo; (or
-            re-run, etc.) starts a fresh run from the <em>current</em> state of
-            the underlying list — not the historical snapshot. If the list has
-            been deleted in the meantime, the historical record is preserved
-            but re-run is disabled.
-          </p>
-        </Section>
-
-        <Section title="Reminders via .ics" icon={<Bell size={18} />}>
-          <p>
-            The Reminders tab generates an iCalendar file (.ics) you can
-            import into your phone or computer&rsquo;s calendar. The reminder
-            includes a deep link back to a specific list, so tapping the
-            calendar notification jumps you straight into the list editor.
-          </p>
-          <p className="mt-2">
-            Recurrence supports daily, weekly with by-day selection, and
-            monthly. Schedules live in your calendar — TTN List doesn&rsquo;t
-            store them. To change a reminder, edit it in your calendar or
-            generate a new file here.
-          </p>
-        </Section>
-
-        <Section title="Backup and restore" icon={<Database size={18} />}>
-          <p>
-            Settings has Export and Import buttons. Export downloads a single
-            JSON file with everything: items, groups, lists, sessions, and
-            photos (base64-encoded inline). Import accepts the same format and
-            offers Merge or Replace:
-          </p>
-          <ul className="mt-2 space-y-1.5 list-disc pl-5">
-            <li>
-              <strong>Merge</strong> — add anything that doesn&rsquo;t already
-              exist (matched by id). Existing data is untouched.
-            </li>
-            <li>
-              <strong>Replace</strong> — wipe everything, then load the file.
-              Cannot be undone. The page reloads after.
-            </li>
-          </ul>
-          <p className="mt-2">
-            Run an export before clearing browser data, switching devices, or
-            experimenting destructively.
-          </p>
-        </Section>
-
-        <Section title="Where things live" icon={<Hammer size={18} />}>
-          <p>
-            Everything is stored in IndexedDB inside your browser, scoped to
-            this site. There is no server, no account, no telemetry. Photos
-            are blobs in IndexedDB — install the app as a PWA to keep them
-            available offline.
-          </p>
-          <p className="mt-2">
-            Clearing site data, switching browsers, or signing out of your
-            browser&rsquo;s sync will lose your data. Export first.
-          </p>
-        </Section>
+          ))}
+        </ul>
+      </TocBox>
+      <div className="space-y-12">
+        {section.guides.map((guide) => (
+          <section key={guide.slug} id={guide.slug} className="scroll-mt-24">
+            <h2 className="text-xl font-semibold tracking-tight">{guide.title}</h2>
+            {guide.summary && (
+              <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">{guide.summary}</p>
+            )}
+            <div className="mt-3">
+              <GuideArticle guide={guide} idPrefix={`${guide.slug}--`} />
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );
 }
 
-function Section({
-  title,
-  icon,
-  children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
+// ---------------------------------------------------------------------------
+// /help/all — the entire manual on one page
+// ---------------------------------------------------------------------------
+
+export function HelpAll() {
+  useScrollToHash();
+  const sections = getGuidesByCategory();
+
   return (
-    <section className="card p-5">
-      <h2 className="mb-2 flex items-center gap-2 text-base font-semibold">
-        <span className="text-ink-500 dark:text-ink-400">{icon}</span>
-        {title}
-      </h2>
-      <div className="space-y-2 text-sm leading-relaxed text-ink-700 dark:text-ink-300">
-        {children}
+    <div>
+      <Breadcrumbs items={[{ label: 'Help', to: '/help' }, { label: 'Full docs' }]} />
+      <PageHeader title="Full help docs" subtitle="Everything in one place — use the contents below to jump around." />
+
+      <TocBox title="Contents">
+        <ul className="space-y-3">
+          {sections.map((section) => (
+            <li key={section.slug}>
+              <a href={`#section-${section.slug}`} className={`${tocLink} font-semibold`}>
+                {section.category}
+              </a>
+              <ul className="mt-1 space-y-1 border-l border-ink-200 pl-3 dark:border-ink-800">
+                {section.guides.map((guide) => (
+                  <li key={guide.slug}>
+                    <a href={`#${guide.slug}`} className={`${tocLink} font-medium`}>
+                      {guide.title}
+                    </a>
+                    <GuideSteps guide={guide} idPrefix={`${guide.slug}--`} />
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </TocBox>
+
+      <div className="space-y-16">
+        {sections.map((section) => (
+          <section key={section.slug} id={`section-${section.slug}`} className="scroll-mt-24">
+            <h2 className="border-b border-ink-200 pb-2 text-2xl font-bold tracking-tight dark:border-ink-800">
+              {section.category}
+            </h2>
+            <div className="mt-6 space-y-12">
+              {section.guides.map((guide) => (
+                <article key={guide.slug} id={guide.slug} className="scroll-mt-24">
+                  <h3 className="text-xl font-semibold tracking-tight">{guide.title}</h3>
+                  {guide.summary && (
+                    <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">{guide.summary}</p>
+                  )}
+                  <div className="mt-3">
+                    <GuideArticle guide={guide} idPrefix={`${guide.slug}--`} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
-    </section>
+    </div>
+  );
+}
+
+function BackLink({ to, label }: { to: string; label: string }) {
+  return (
+    <Link
+      to={to}
+      className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 transition hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-50"
+    >
+      <ArrowLeft size={16} />
+      {label}
+    </Link>
   );
 }
