@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -33,6 +33,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal } from '@/components/ui/Modal';
 import { Thumbnail } from '@/components/ui/Thumbnail';
+import { PhotoSourceSheet } from '@/components/inputs/PhotoSourceSheet';
 import { useToast } from '@/components/ui/Toast';
 import {
   addPhoto,
@@ -488,15 +489,11 @@ function CompletionView({
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [previewing, setPreviewing] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [choosing, setChoosing] = useState(false);
 
   const checkedCount = resolved.filter((r) => r.checked).length;
 
-  const onPickFiles = () => inputRef.current?.click();
-
-  const onFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = '';
+  const onFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const created = await Promise.all(files.map((f) => addPhoto(f)));
     setPhotoIds((prev) => [...prev, ...created.map((p) => p.id)]);
@@ -548,18 +545,10 @@ function CompletionView({
       <section className="card space-y-3 p-5">
         <div className="flex items-center justify-between">
           <div className="text-sm font-medium">Photos ({photoIds.length})</div>
-          <button type="button" className="btn-secondary" onClick={onPickFiles}>
+          <button type="button" className="btn-secondary" onClick={() => setChoosing(true)}>
             <Camera size={14} /> Add
           </button>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
-            className="hidden"
-            onChange={onFiles}
-          />
+          <PhotoSourceSheet open={choosing} onClose={() => setChoosing(false)} multiple onFiles={onFiles} />
         </div>
         {photoIds.length === 0 ? (
           <p className="text-sm text-ink-500 dark:text-ink-400">

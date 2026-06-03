@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Camera, X } from 'lucide-react';
 import { addPhoto, deletePhoto } from '@/db/repo';
 import { Thumbnail } from '@/components/ui/Thumbnail';
+import { PhotoSourceSheet } from './PhotoSourceSheet';
 
 type Props = {
   photoId: string | undefined;
@@ -15,10 +16,10 @@ type Props = {
 
 /**
  * Single-photo picker. Tapping the thumbnail (or the empty placeholder) opens
- * the OS image picker — `capture="environment"` hints at the rear camera on
- * mobile but lets the user choose from library too. The picker writes the
- * Blob through `addPhoto` immediately and surfaces the resulting id via
- * `onChange`. On replace/remove, the old photo row is deleted.
+ * a chooser sheet so the user can either take a new photo or pick one from
+ * their gallery (see PhotoSourceSheet). The chosen Blob is written through
+ * `addPhoto` immediately and surfaced via `onChange`. On replace/remove, the
+ * old photo row is deleted.
  */
 export function PhotoPicker({
   photoId,
@@ -27,14 +28,11 @@ export function PhotoPicker({
   size = 88,
   ariaLabel = 'Add photo',
 }: Props) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
+  const [choosing, setChoosing] = useState(false);
 
-  const onPick = () => inputRef.current?.click();
-
-  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // allow re-selecting the same file
+  const onFiles = async (files: File[]) => {
+    const file = files[0];
     if (!file) return;
     setBusy(true);
     try {
@@ -57,7 +55,7 @@ export function PhotoPicker({
     <div className="flex items-center gap-3">
       <button
         type="button"
-        onClick={onPick}
+        onClick={() => setChoosing(true)}
         disabled={busy}
         aria-label={photoId ? 'Replace photo' : ariaLabel}
         className="relative shrink-0 rounded-xl outline-none transition focus-visible:ring-2 focus-visible:ring-ink-900/20 dark:focus-visible:ring-ink-50/20 disabled:opacity-50"
@@ -83,14 +81,7 @@ export function PhotoPicker({
           <X size={14} /> Remove
         </button>
       )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={onFile}
-      />
+      <PhotoSourceSheet open={choosing} onClose={() => setChoosing(false)} onFiles={onFiles} />
     </div>
   );
 }
