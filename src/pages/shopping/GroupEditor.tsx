@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { Thumbnail } from '@/components/ui/Thumbnail';
 import { PhotoPicker } from '@/components/inputs/PhotoPicker';
+import { QuickAddItem } from '@/components/inputs/QuickAddItem';
 import { useToast } from '@/components/ui/Toast';
 import {
   createShoppingGroup,
@@ -13,7 +14,7 @@ import {
   useShoppingItems,
 } from '@/db/repo';
 import { searchItems, matchingTags } from '@/lib/itemSearch';
-import type { ShoppingGroupMember } from '@/types';
+import type { ShoppingGroupMember, ShoppingItem } from '@/types';
 
 export function ShoppingGroupEditor() {
   const { id } = useParams();
@@ -287,6 +288,11 @@ function ItemPickerModal({
       return n;
     });
 
+  const onCreated = (item: ShoppingItem) => {
+    setPicked((prev) => new Set(prev).add(item.id));
+    setQuery('');
+  };
+
   return (
     <Modal
       open={open}
@@ -309,36 +315,42 @@ function ItemPickerModal({
       }
     >
       <div className="space-y-3">
+        {available.length > 0 && (
+          <div className="relative">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
+            />
+            <input
+              className="input pl-9"
+              placeholder="Search items or tags"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-400 hover:bg-ink-100 dark:hover:bg-ink-800"
+                aria-label="Clear"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        )}
         {available.length === 0 ? (
           <p className="text-sm text-ink-500">
-            No items available. <Link to="/shopping/items" className="underline">Create some first.</Link>
+            {items.length === 0
+              ? 'Your library is empty — create your first item below.'
+              : 'Every item is already in this group. Create a new one below.'}
           </p>
         ) : (
           <>
-            <div className="relative">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
-              />
-              <input
-                className="input pl-9"
-                placeholder="Search items or tags"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-400 hover:bg-ink-100 dark:hover:bg-ink-800"
-                  aria-label="Clear"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
             {filtered.length === 0 && (
-              <p className="py-6 text-center text-sm text-ink-500">No items match “{query}”.</p>
+              <p className="py-6 text-center text-sm text-ink-500">
+                No items match “{query}”. Create it below.
+              </p>
             )}
             <ul className="max-h-72 space-y-1 overflow-auto">
               {filtered.map((i) => {
@@ -390,6 +402,7 @@ function ItemPickerModal({
             </ul>
           </>
         )}
+        <QuickAddItem defaultName={query} existingItems={items} onCreated={onCreated} />
       </div>
     </Modal>
   );

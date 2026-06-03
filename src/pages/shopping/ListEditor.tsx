@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Thumbnail } from '@/components/ui/Thumbnail';
+import { QuickAddItem } from '@/components/inputs/QuickAddItem';
 import { useToast } from '@/components/ui/Toast';
 import {
   createShoppingList,
@@ -646,6 +647,11 @@ function PickItemsModal({
   const available = useMemo(() => items.filter((i) => !excludeIds.has(i.id)), [items, excludeIds]);
   const filtered = useMemo(() => searchItems(available, query), [available, query]);
 
+  const onCreated = (item: ShoppingItem) => {
+    setPicked((prev) => new Set(prev).add(item.id));
+    setQuery('');
+  };
+
   return (
     <Modal
       open={open}
@@ -665,13 +671,8 @@ function PickItemsModal({
         </>
       }
     >
-      {available.length === 0 ? (
-        <EmptyState
-          title="Nothing to add"
-          description="Either you've already added every item, or your library is empty."
-        />
-      ) : (
-        <div className="space-y-3">
+      <div className="space-y-3">
+        {available.length > 0 && (
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
             <input className="input pl-9" placeholder="Search items or tags" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -686,30 +687,39 @@ function PickItemsModal({
               </button>
             )}
           </div>
-          {filtered.length === 0 ? (
-            <p className="py-6 text-center text-sm text-ink-500">No items match “{query}”.</p>
-          ) : (
-            <ul className="max-h-72 space-y-1 overflow-auto">
-              {filtered.map((i) => (
-                <PickRow
-                  key={i.id}
-                  photoId={i.photoId}
-                  name={i.name}
-                  tags={matchingTags(i, query)}
-                  checked={picked.has(i.id)}
-                  onClick={() =>
-                    setPicked((p) => {
-                      const n = new Set(p);
-                      if (n.has(i.id)) n.delete(i.id); else n.add(i.id);
-                      return n;
-                    })
-                  }
-                />
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+        )}
+        {available.length === 0 ? (
+          <p className="text-sm text-ink-500">
+            {items.length === 0
+              ? 'Your library is empty — create your first item below.'
+              : 'Every item is already on this list. Create a new one below.'}
+          </p>
+        ) : filtered.length === 0 ? (
+          <p className="py-6 text-center text-sm text-ink-500">
+            No items match “{query}”. Create it below.
+          </p>
+        ) : (
+          <ul className="max-h-72 space-y-1 overflow-auto">
+            {filtered.map((i) => (
+              <PickRow
+                key={i.id}
+                photoId={i.photoId}
+                name={i.name}
+                tags={matchingTags(i, query)}
+                checked={picked.has(i.id)}
+                onClick={() =>
+                  setPicked((p) => {
+                    const n = new Set(p);
+                    if (n.has(i.id)) n.delete(i.id); else n.add(i.id);
+                    return n;
+                  })
+                }
+              />
+            ))}
+          </ul>
+        )}
+        <QuickAddItem defaultName={query} existingItems={items} onCreated={onCreated} />
+      </div>
     </Modal>
   );
 }
