@@ -8,6 +8,7 @@ import {
   Check,
   RotateCcw,
   GripVertical,
+  ExternalLink,
 } from 'lucide-react';
 import {
   DndContext,
@@ -277,6 +278,7 @@ function SortableProjectItem({
               {r.name ?? step?.name ?? <em className="text-ink-400">deleted</em>}
             </span>
           </button>
+          {step?.url && <StepLink url={step.url} size={13} />}
         </div>
       </li>
     );
@@ -303,8 +305,31 @@ function SortableProjectItem({
         <button type="button" onClick={onToggle} className={['min-w-0 flex-1 truncate text-left', fontClass, r.checked ? 'line-through' : ''].join(' ')}>
           {r.name ?? step?.name ?? <em className="text-ink-400">deleted step</em>}
         </button>
+        {step?.url && <StepLink url={step.url} size={isCondensed ? 16 : 18} />}
       </div>
     </li>
+  );
+}
+
+/**
+ * Opens a step's reference link in a new tab. Lives beside the toggle button so
+ * tapping it follows the link without checking the step off. `stopPropagation`
+ * keeps the surrounding drag/toggle handlers from firing.
+ */
+function StepLink({ url, size }: { url: string; size: number }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      aria-label="Open link in a new tab"
+      title={url}
+      className="grid shrink-0 place-items-center rounded-lg p-1.5 text-blue-600 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
+    >
+      <ExternalLink size={size} />
+    </a>
   );
 }
 

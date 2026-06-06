@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Thumbnail } from '@/components/ui/Thumbnail';
+import { QuickAddStep } from '@/components/inputs/QuickAddStep';
 import { useToast } from '@/components/ui/Toast';
 import {
   createProjectList,
@@ -15,6 +16,7 @@ import {
 } from '@/db/repo';
 import type { ProjectStep, ProjectProcess, ProjectListEntry } from '@/types';
 import { moveProjectEntry, resolveProjectList } from '@/lib/projects';
+import { searchItems, matchingTags } from '@/lib/itemSearch';
 import { useDeadLinkBail } from '@/hooks/useDeadLinkBail';
 import { newId } from '@/lib/id';
 
@@ -298,28 +300,42 @@ function PickStepsModal({ open, steps, excludeIds, onClose, onConfirm }: { open:
   const [query, setQuery] = useState('');
   useEffect(() => { if (open) { setPicked(new Set()); setQuery(''); } }, [open]);
   const available = useMemo(() => steps.filter((s) => !excludeIds.has(s.id)), [steps, excludeIds]);
-  const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return q ? available.filter((s) => s.name.toLowerCase().includes(q)) : available; }, [available, query]);
+  const filtered = useMemo(() => searchItems(available, query), [available, query]);
+
+  const onCreated = (step: ProjectStep) => {
+    setPicked((prev) => new Set(prev).add(step.id));
+    setQuery('');
+  };
 
   return (
     <Modal open={open} onClose={onClose} title="Add steps"
       footer={<><button type="button" className="btn-ghost" onClick={onClose}>Cancel</button><button type="button" className="btn-primary" disabled={picked.size === 0} onClick={() => onConfirm([...picked])}>Add {picked.size > 0 && `(${picked.size})`}</button></>}>
-      {available.length === 0 ? (
-        <EmptyState title="Nothing to add" description="Either you've already added every step, or your library is empty." />
-      ) : (
-        <div className="space-y-3">
+      <div className="space-y-3">
+        {available.length > 0 && (
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-            <input className="input pl-9" placeholder="Search steps" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input className="input pl-9" placeholder="Search steps or tags" value={query} onChange={(e) => setQuery(e.target.value)} />
             {query && <button type="button" onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-400 hover:bg-ink-100 dark:hover:bg-ink-800" aria-label="Clear"><X size={14} /></button>}
           </div>
+        )}
+        {available.length === 0 ? (
+          <p className="text-sm text-ink-500">
+            {steps.length === 0
+              ? 'Your library is empty — create your first step below.'
+              : 'Every step is already on this list. Create a new one below.'}
+          </p>
+        ) : filtered.length === 0 ? (
+          <p className="py-6 text-center text-sm text-ink-500">No steps match “{query}”. Create it below.</p>
+        ) : (
           <ul className="max-h-72 space-y-1 overflow-auto">
             {filtered.map((s) => (
-              <PickRow key={s.id} photoId={s.photoId} name={s.name} checked={picked.has(s.id)}
+              <PickRow key={s.id} photoId={s.photoId} name={s.name} tags={matchingTags(s, query)} checked={picked.has(s.id)}
                 onClick={() => setPicked((p) => { const n = new Set(p); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })} />
             ))}
           </ul>
-        </div>
-      )}
+        )}
+        <QuickAddStep defaultName={query} existingSteps={steps} onCreated={onCreated} />
+      </div>
     </Modal>
   );
 }
@@ -354,7 +370,7 @@ function PickProcessesModal({ open, processes, excludeIds, onClose, onConfirm }:
   );
 }
 
-function PickRow({ photoId, name, subtitle, checked, onClick }: { photoId: string | undefined; name: string; subtitle?: string; checked: boolean; onClick: () => void }) {
+function PickRow({ photoId, name, subtitle, tags, checked, onClick }: { photoId: string | undefined; name: string; subtitle?: string; tags?: string[]; checked: boolean; onClick: () => void }) {
   return (
     <li>
       <button type="button" onClick={onClick} className={['flex w-full items-center gap-3 rounded-xl border p-2 text-left transition', checked ? 'border-ink-900 bg-ink-900/5 dark:border-ink-50 dark:bg-ink-50/5' : 'border-ink-200 hover:border-ink-300 dark:border-ink-800 dark:hover:border-ink-700'].join(' ')}>
@@ -362,6 +378,13 @@ function PickRow({ photoId, name, subtitle, checked, onClick }: { photoId: strin
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{name}</div>
           {subtitle && <div className="truncate text-xs text-ink-500">{subtitle}</div>}
+          {tags && tags.length > 0 && (
+            <div className="mt-0.5 flex flex-wrap gap-1">
+              {tags.map((t) => (
+                <span key={t} className="rounded-full bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium text-ink-600 dark:bg-ink-800 dark:text-ink-300">{t}</span>
+              ))}
+            </div>
+          )}
         </div>
         <span className={['grid h-5 w-5 place-items-center rounded-md border', checked ? 'border-ink-900 bg-ink-900 text-ink-50 dark:border-ink-50 dark:bg-ink-50 dark:text-ink-900' : 'border-ink-300 dark:border-ink-700'].join(' ')} aria-hidden>{checked ? '✓' : ''}</span>
       </button>

@@ -157,6 +157,10 @@ export type ProjectStep = {
   name: string;
   notes?: string;
   photoId?: string;
+  /** Optional reference link, opened in a new tab during "Run it". Stored with protocol. */
+  url?: string;
+  /** User-defined tags. Case-preserved on write; compared case-insensitively. */
+  tags?: string[];
   order: number;
   createdAt: number;
   updatedAt: number;
